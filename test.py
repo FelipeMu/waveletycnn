@@ -134,7 +134,7 @@ vsc = [] # VSC: Velocidad Sanguínea Cerebral
 
 #=================================================
 
-folder_csv = 'D:/TT/Memoria/codigo fuente/signals'
+folder_csv = 'D:/TT/Memoria/waveletycnn/signals'
 files_csv = os.listdir(folder_csv)
 
 
@@ -147,7 +147,7 @@ signals = []
 for each_csv in files_csv:
     dicc_signal_aux = {}
 
-    carpeta_csv = 'D:/TT/Memoria/codigo fuente/signals'
+    carpeta_csv = 'D:/TT/Memoria/waveletycnn/signals'
     archivo_csv = each_csv
     #concatenar ruta y csv para acceder a los datos
     ruta_archivo = os.path.join(carpeta_csv, archivo_csv)
@@ -288,7 +288,7 @@ for s in signals:
 #####################################################################
 
 # Directorio donde se almacenaran las senales con ruido
-output_folder = "D:/TT/Memoria/codigo fuente/signals_noise"
+output_folder = "D:/TT/Memoria/waveletycnn/signals_noise"
 os.makedirs(output_folder, exist_ok=True)  # Crea la carpeta si no existe
 
 # Iterar sobre el arreglo de diccionario (lugar donde se almacenan las senales de cada individuo)
