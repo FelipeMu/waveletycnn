@@ -79,3 +79,28 @@ for idx = 1:num_files
     fprintf('----------------------------------------\n');
 end
 fprintf('----------------------------------------\n');
+
+%############################################################
+%############################################################
+%############################################################
+
+% Recorrer el arreglo de estructuras 'signals'
+for idx = 1:numel(signals)
+    dicc = signals(idx); % Acceder a la estructura actual
+
+    % Verificar si las longitudes de las señales PAM y VSC son diferentes
+    if numel(dicc.signal_pam) ~= numel(dicc.signal_vsc)
+        fprintf('Arreglos PAM y VSC tienen diferente longitud en el archivo %s.\n', dicc.name_file);
+    end
+
+    % Mostrar el nombre del archivo y el número de muestras
+    fprintf('%s || Número de muestras: %d\n', dicc.name_file, numel(dicc.signal_pam));
+
+    % Verificar si la longitud de la señal PAM es potencia de dos
+    is_power_of_two(numel(dicc.signal_pam), 'señal PAM');
+
+    % Verificar si la longitud de la señal VSC es potencia de dos
+    is_power_of_two(numel(dicc.signal_vsc), 'señal VSC');
+
+    fprintf('\n'); % Espacio entre salidas para claridad
+end

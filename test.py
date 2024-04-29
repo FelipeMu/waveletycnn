@@ -142,6 +142,7 @@ files_csv = os.listdir(folder_csv)
 print('Archivos encontrados:\n')
 print(files_csv)
 
+
 # Se procede a almacenar cada archivo .csv en un diccionario y luego en un arreglo de senales
 signals = []
 for each_csv in files_csv:
