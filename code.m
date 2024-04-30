@@ -41,10 +41,26 @@ carpeta_csv = 'D:/TT/Memoria/waveletycnn/signals';
 % Obtener lista de archivos CSV en la carpeta
 files_csv = dir(fullfile(carpeta_csv, '*.csv'));
 
+
+% Estructura de wavelet: AMOR
+structure_amor = struct('name_wavelet', 'amor', 'error', 0.0, 'signal_vsc_rec', []);
+
+% Estructura de wavelet: MORSE
+structure_morse = struct('name_wavelet', 'morse', 'error', 0.0, 'signal_vsc_rec', []);
+
+% Estructura de wavelet: BUMP
+structure_bump = struct('name_wavelet', 'bump', 'error', 0.0, 'signal_vsc_rec', []);
+
+
+
 % Inicializar el arreglo de estructuras con los campos necesarios
 num_files = numel(files_csv);
-signals(num_files) = struct('name_file', '', 'signal_pam', [], 'signal_vsc', []);
-
+signals(num_files) = struct('name_file', '', 'signal_pam', [], 'signal_vsc', [], 'struct_amor', structure_amor, 'struct_morse', structure_morse, 'struct_bump', structure_bump);
+% Definir la estructura con cada uno de sus atributos, tomando en cuenta la
+% cantidad de archivos encontrados (senales de invididuos) en la carpeta.
+for j = 1:num_files
+    signals(j) = struct('name_file', '', 'signal_pam', [], 'signal_vsc', [], 'struct_amor', structure_amor, 'struct_morse', structure_morse, 'struct_bump', structure_bump);
+end
 % Procesar cada archivo CSV
 for idx = 1:num_files
     archivo_csv = files_csv(idx).name; % Nombre del archivo CSV
@@ -80,6 +96,11 @@ for idx = 1:num_files
 end
 fprintf('----------------------------------------\n');
 
+
+for i = 1:num_files
+    disp(signals(i)); % Muestra la estructura de cada elemento
+end
+
 %############################################################
 %############################################################
 %############################################################
@@ -109,33 +130,78 @@ end
 %##########################################################################
 %##########################################################################
 
+% Se define arreglo que almacena las wavelet continuas disponibles
+wavelets_cwt = ["amor", "morse", "bump"];
+
 % Aplicar CWT y espectros para cada senal (por ahora a las senales de VSC)
 for i = 1:numel(signals)
     s = signals(i);
-    
-    fprintf('\nSEÑAL: %s\n', s.name_file);
-    
-    % Paso 1: Preparar las entradas para FFT y CWT
-    n = length(s.signal_vsc); % Cantidad de muestras
-    t = linspace(0, n * ts, n); % Vector de tiempo
-    
-    signal_to_analyze = s.signal_vsc; % Señal para analizar
-    
-    % Paso 2: Analizar FFT
-    %apply_fft(signal_to_analyze, ts); % Llamar a la función FFT
-    
-    % Paso 3: Elegir la wavelet y escalas para CWT
-    wavelet = 'amor'; % Wavelet Morlet analítica
-    
-    %scales = 1:512; % Escalas para la CWT. La funcion cwt calcula
-    % la escala min y max de la forma mas apropiada
-    
-    % Paso 4: Aplicar la CWT
-    [cfs, frq] = cwt(signal_to_analyze,wavelet); 
-    % Crear vector que representa los tiempos en los que se toma una muestra
-    tms = (0:numel(signal_to_analyze)-1)/fs;
-    % Llamada a funcion para mostrar grafica de la senal y su respectivo
-    % escalograma
-    plot_signal_and_scalogram(tms, signal_to_analyze, frq, cfs)
-end
+    for w = 1:numel(wavelets_cwt)
+        % Paso 1: Elegir la wavelet
+        wname = wavelets_cwt(w); % Wavelet      
+        % Paso 2: Preparar las entradas para FFT y CWT
+        n = length(s.signal_vsc); % Cantidad de muestras
+        t = linspace(0, n * ts, n); % Vector de tiempo
+        
+        signal_to_analyze = s.signal_vsc; % Señal para analizar
+        
+        % Paso 3: Analizar FFT
+        %apply_fft(signal_to_analyze, ts); % Llamar a la función FFT
+         
+        %scales = 1:512; % Escalas para la CWT. La funcion cwt calcula
+        % la escala min y max de la forma mas apropiada
+        
+        
+        %Guardar la reconstruccion en su respectiva struct dependiendo de
+        %la wavelet madre que se esta ejecutando
+        switch wname
+            case 'amor'
+           
+                [coefs_amor, freqs_amor1] = cwt(signal_to_analyze, 'amor'); % Aplicar CWT
+                reconstructed_signal_amor = icwt(coefs_amor, 'amor',SignalMean=mean(signal_to_analyze));
+                s.struct_amor.signal_vsc_rec = reconstructed_signal_amor;
+                signals(i).struct_amor.signal_vsc_rec = reconstructed_signal_amor;
+            case 'morse'
+            
+               [coefs_morse, freqs_morse] = cwt(signal_to_analyze, 'morse'); % Aplicar CWT
+               reconstructed_signal_morse = icwt(coefs_morse, 'morse',SignalMean=mean(signal_to_analyze));
+               s.struct_morse.signal_vsc_rec = reconstructed_signal_morse;
+               signals(i).struct_morse.signal_vsc_rec = reconstructed_signal_morse;
+            case 'bump'
+            
+                [coefs_bump, freqs_bump] = cwt(signal_to_analyze, 'bump'); % Aplicar CWT
+                reconstructed_signal_bump = icwt(coefs_bump, 'bump',SignalMean=mean(signal_to_analyze));
+                s.struct_bump.signal_vsc_rec = reconstructed_signal_bump;
+                signals(i).struct_bump.signal_vsc_rec = reconstructed_signal_bump;
+            otherwise
+                fprintf('No se ha encontrado conincidencia con dicha wavelet')
+        end
 
+
+
+        % Crear vector que representa los tiempos en los que se toma una muestra
+        tms = (0:numel(signal_to_analyze)-1)/fs;
+        % Llamada a funcion para mostrar grafica de la senal y su respectivo
+        % escalograma
+        %plot_signal_and_scalogram(tms, signal_to_analyze, frq, cfs)
+    end
+ end 
+
+%#############################################################################
+%#############################################################################
+%#############################################################################
+
+
+%[cfs1, frq1] = cwt(signals(1).signal_vsc, 'bump'); % Aplicar CWT
+%reconstructed_signal = icwt(cfs1, 'bump',SignalMean=mean(signals(1).signal_vsc));
+%Fs = 5.0;
+%dt = 1/Fs;
+%T = 0:dt:numel(signals(1).signal_vsc)*dt-dt;
+%plot(T,signals(1).signal_vsc)
+%xlabel("Seconds")
+%ylabel("Amplitude")
+%hold on
+%plot(T,reconstructed_signal,"r")
+%hold off
+%axis tight
+%legend("Original","Reconstruction")
