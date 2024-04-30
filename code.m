@@ -108,3 +108,34 @@ end
 %##########################################################################
 %##########################################################################
 %##########################################################################
+
+% Aplicar CWT y espectros para cada senal (por ahora a las senales de VSC)
+for i = 1:numel(signals)
+    s = signals(i);
+    
+    fprintf('\nSEÑAL: %s\n', s.name_file);
+    
+    % Paso 1: Preparar las entradas para FFT y CWT
+    n = length(s.signal_vsc); % Cantidad de muestras
+    t = linspace(0, n * ts, n); % Vector de tiempo
+    
+    signal_to_analyze = s.signal_vsc; % Señal para analizar
+    
+    % Paso 2: Analizar FFT
+    %apply_fft(signal_to_analyze, ts); % Llamar a la función FFT
+    
+    % Paso 3: Elegir la wavelet y escalas para CWT
+    wavelet = 'amor'; % Wavelet Morlet analítica
+    
+    %scales = 1:512; % Escalas para la CWT. La funcion cwt calcula
+    % la escala min y max de la forma mas apropiada
+    
+    % Paso 4: Aplicar la CWT
+    [cfs, frq] = cwt(signal_to_analyze,wavelet); 
+    % Crear vector que representa los tiempos en los que se toma una muestra
+    tms = (0:numel(signal_to_analyze)-1)/fs;
+    % Llamada a funcion para mostrar grafica de la senal y su respectivo
+    % escalograma
+    plot_signal_and_scalogram(tms, signal_to_analyze, frq, cfs)
+end
+
