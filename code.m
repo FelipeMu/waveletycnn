@@ -138,52 +138,62 @@ for i = 1:numel(signals)
     s = signals(i);
     for w = 1:numel(wavelets_cwt)
         % Paso 1: Elegir la wavelet
-        wname = wavelets_cwt(w); % Wavelet      
-        % Paso 2: Preparar las entradas para FFT y CWT
-        n = length(s.signal_vsc); % Cantidad de muestras
-        t = linspace(0, n * ts, n); % Vector de tiempo
-        
+        wname = wavelets_cwt(w); % Wavelet 
         signal_to_analyze = s.signal_vsc; % Señal para analizar
         
+
+        
+        % Paso 2: Preparar las entradas para FFT y CWT
+        %n = length(s.signal_vsc); % Cantidad de muestras
+        %t = linspace(0, n * ts, n); % Vector de tiempo
         % Paso 3: Analizar FFT
         %apply_fft(signal_to_analyze, ts); % Llamar a la función FFT
-         
         %scales = 1:512; % Escalas para la CWT. La funcion cwt calcula
         % la escala min y max de la forma mas apropiada
         
         
-        %Guardar la reconstruccion en su respectiva struct dependiendo de
-        %la wavelet madre que se esta ejecutando
+        % Guardar la reconstruccion en su respectiva struct dependiendo de
+        % la wavelet madre que se esta ejecutando.
         switch wname
             case 'amor'
            
-                [coefs_amor, freqs_amor1] = cwt(signal_to_analyze, 'amor'); % Aplicar CWT
+                [coefs_amor, freqs_amor] = cwt(signal_to_analyze, 'amor'); % Aplicar CWT
                 reconstructed_signal_amor = icwt(coefs_amor, 'amor',SignalMean=mean(signal_to_analyze));
-                s.struct_amor.signal_vsc_rec = reconstructed_signal_amor;
+                %s.struct_amor.signal_vsc_rec = reconstructed_signal_amor;
                 signals(i).struct_amor.signal_vsc_rec = reconstructed_signal_amor;
+
+                % Crear vector que representa los tiempos en los que se toma una muestra
+                tms = (0:numel(signal_to_analyze)-1)/fs;
+                % Llamada a funcion para mostrar grafica de la senal y su respectivo
+                % escalograma
+                plot_signal_and_scalogram(tms, signal_to_analyze, freqs_amor, coefs_amor, 'amor',s.name_file)
             case 'morse'
             
                [coefs_morse, freqs_morse] = cwt(signal_to_analyze, 'morse'); % Aplicar CWT
                reconstructed_signal_morse = icwt(coefs_morse, 'morse',SignalMean=mean(signal_to_analyze));
-               s.struct_morse.signal_vsc_rec = reconstructed_signal_morse;
+               %s.struct_morse.signal_vsc_rec = reconstructed_signal_morse;
                signals(i).struct_morse.signal_vsc_rec = reconstructed_signal_morse;
+
+               % Crear vector que representa los tiempos en los que se toma una muestra
+                tms = (0:numel(signal_to_analyze)-1)/fs;
+                % Llamada a funcion para mostrar grafica de la senal y su respectivo
+                % escalograma
+                plot_signal_and_scalogram(tms, signal_to_analyze, freqs_morse, coefs_morse, 'morse', s.name_file)
             case 'bump'
             
                 [coefs_bump, freqs_bump] = cwt(signal_to_analyze, 'bump'); % Aplicar CWT
                 reconstructed_signal_bump = icwt(coefs_bump, 'bump',SignalMean=mean(signal_to_analyze));
-                s.struct_bump.signal_vsc_rec = reconstructed_signal_bump;
+                %s.struct_bump.signal_vsc_rec = reconstructed_signal_bump;
                 signals(i).struct_bump.signal_vsc_rec = reconstructed_signal_bump;
+
+                % Crear vector que representa los tiempos en los que se toma una muestra
+                tms = (0:numel(signal_to_analyze)-1)/fs;
+                % Llamada a funcion para mostrar grafica de la senal y su respectivo
+                % escalograma
+                plot_signal_and_scalogram(tms, signal_to_analyze, freqs_bump, coefs_bump, 'bump', s.name_file)
             otherwise
                 fprintf('No se ha encontrado conincidencia con dicha wavelet')
         end
-
-
-
-        % Crear vector que representa los tiempos en los que se toma una muestra
-        tms = (0:numel(signal_to_analyze)-1)/fs;
-        % Llamada a funcion para mostrar grafica de la senal y su respectivo
-        % escalograma
-        %plot_signal_and_scalogram(tms, signal_to_analyze, frq, cfs)
     end
  end 
 
