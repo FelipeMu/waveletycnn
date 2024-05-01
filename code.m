@@ -161,7 +161,13 @@ for i = 1:numel(signals)
                 reconstructed_signal_amor = icwt(coefs_amor, 'amor',SignalMean=mean(signal_to_analyze));
                 %s.struct_amor.signal_vsc_rec = reconstructed_signal_amor;
                 signals(i).struct_amor.signal_vsc_rec = reconstructed_signal_amor;
-
+                %###########################################################################################
+                % Se procede a calcular el NMSE:
+                nmse_amor = get_nmse(signals(i).signal_vsc, reconstructed_signal_amor);
+                % Se asigna el NMSE a la respectiva estructura de la
+                % wavelet madre:
+                signals(i).struct_amor.error = nmse_amor;
+                %###########################################################################################
                 % Crear vector que representa los tiempos en los que se toma una muestra
                 tms = (0:numel(signal_to_analyze)-1)/fs;
                 % Llamada a funcion para mostrar grafica de la senal y su respectivo
@@ -171,9 +177,16 @@ for i = 1:numel(signals)
             
                [coefs_morse, freqs_morse] = cwt(signal_to_analyze, 'morse'); % Aplicar CWT
                reconstructed_signal_morse = icwt(coefs_morse, 'morse',SignalMean=mean(signal_to_analyze));
-               %s.struct_morse.signal_vsc_rec = reconstructed_signal_morse;
+               % Se guarda la senal reconstruida en la estructura de la
+               % respectiva senal que se esta analizando:
                signals(i).struct_morse.signal_vsc_rec = reconstructed_signal_morse;
-
+               %###########################################################################################
+               % Se procede a calcular el NMSE:
+               nmse_morse = get_nmse(signals(i).signal_vsc, reconstructed_signal_morse);
+               % Se asigna el NMSE a la respectiva estructura de la
+               % wavelet madre:
+               signals(i).struct_morse.error = nmse_morse;
+               %###########################################################################################
                % Crear vector que representa los tiempos en los que se toma una muestra
                 tms = (0:numel(signal_to_analyze)-1)/fs;
                 % Llamada a funcion para mostrar grafica de la senal y su respectivo
@@ -185,7 +198,13 @@ for i = 1:numel(signals)
                 reconstructed_signal_bump = icwt(coefs_bump, 'bump',SignalMean=mean(signal_to_analyze));
                 %s.struct_bump.signal_vsc_rec = reconstructed_signal_bump;
                 signals(i).struct_bump.signal_vsc_rec = reconstructed_signal_bump;
-
+                %###########################################################################################
+                % Se procede a calcular el NMSE:
+                nmse_bump = get_nmse(signals(i).signal_vsc, reconstructed_signal_bump);
+                % Se asigna el NMSE a la respectiva estructura de la
+                % wavelet madre:
+                signals(i).struct_bump.error = nmse_bump;
+                %###########################################################################################
                 % Crear vector que representa los tiempos en los que se toma una muestra
                 tms = (0:numel(signal_to_analyze)-1)/fs;
                 % Llamada a funcion para mostrar grafica de la senal y su respectivo
@@ -202,16 +221,4 @@ for i = 1:numel(signals)
 %#############################################################################
 
 
-%[cfs1, frq1] = cwt(signals(1).signal_vsc, 'bump'); % Aplicar CWT
-%reconstructed_signal = icwt(cfs1, 'bump',SignalMean=mean(signals(1).signal_vsc));
-%Fs = 5.0;
-%dt = 1/Fs;
-%T = 0:dt:numel(signals(1).signal_vsc)*dt-dt;
-%plot(T,signals(1).signal_vsc)
-%xlabel("Seconds")
-%ylabel("Amplitude")
-%hold on
-%plot(T,reconstructed_signal,"r")
-%hold off
-%axis tight
-%legend("Original","Reconstruction")
+
