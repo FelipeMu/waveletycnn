@@ -17,7 +17,7 @@ function nmse = get_nmse(original_signal, predict_signal)
 
     % Calcular la varianza de la senal original
     variance = var(original_signal);
-    disp(mean_squared_error)
+
     % Calcular NMSE (Normalized Mean Squared Error)
     nmse = mean_squared_error / variance;
     

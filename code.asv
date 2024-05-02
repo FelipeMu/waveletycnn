@@ -159,11 +159,12 @@ for i = 1:numel(signals)
            
                 [coefs_amor, freqs_amor] = cwt(signal_to_analyze, 'amor'); % Aplicar CWT
                 reconstructed_signal_amor = icwt(coefs_amor, 'amor',SignalMean=mean(signal_to_analyze));
+                reconstructed_signal_amor = reconstructed_signal_amor(:); % transformar a vector columna
                 %s.struct_amor.signal_vsc_rec = reconstructed_signal_amor;
                 signals(i).struct_amor.signal_vsc_rec = reconstructed_signal_amor;
                 %###########################################################################################
                 % Se procede a calcular el NMSE:
-                nmse_amor = get_nmse(signals(i).signal_vsc, reconstructed_signal_amor);
+                nmse_amor = get_nmse(signals(i).signal_vsc, signals(i).struct_amor.signal_vsc_rec);
                 % Se asigna el NMSE a la respectiva estructura de la
                 % wavelet madre:
                 signals(i).struct_amor.error = nmse_amor;
@@ -175,19 +176,20 @@ for i = 1:numel(signals)
                 plot_signal_and_scalogram(tms, signal_to_analyze, freqs_amor, coefs_amor, 'amor',s.name_file)
             case 'morse'
             
-               [coefs_morse, freqs_morse] = cwt(signal_to_analyze, 'morse'); % Aplicar CWT
-               reconstructed_signal_morse = icwt(coefs_morse, 'morse',SignalMean=mean(signal_to_analyze));
-               % Se guarda la senal reconstruida en la estructura de la
-               % respectiva senal que se esta analizando:
-               signals(i).struct_morse.signal_vsc_rec = reconstructed_signal_morse;
-               %###########################################################################################
-               % Se procede a calcular el NMSE:
-               nmse_morse = get_nmse(signals(i).signal_vsc, reconstructed_signal_morse);
-               % Se asigna el NMSE a la respectiva estructura de la
-               % wavelet madre:
-               signals(i).struct_morse.error = nmse_morse;
-               %###########################################################################################
-               % Crear vector que representa los tiempos en los que se toma una muestra
+                [coefs_morse, freqs_morse] = cwt(signal_to_analyze, 'morse'); % Aplicar CWT
+                reconstructed_signal_morse = icwt(coefs_morse, 'morse',SignalMean=mean(signal_to_analyze));
+                reconstructed_signal_morse = reconstructed_signal_morse(:); % transformar a vector columna
+                % Se guarda la senal reconstruida en la estructura de la
+                % respectiva senal que se esta analizando:
+                signals(i).struct_morse.signal_vsc_rec = reconstructed_signal_morse;
+                %###########################################################################################
+                % Se procede a calcular el NMSE:
+                nmse_morse = get_nmse(signals(i).signal_vsc, reconstructed_signal_morse);
+                % Se asigna el NMSE a la respectiva estructura de la
+                % wavelet madre:
+                signals(i).struct_morse.error = nmse_morse;
+                %###########################################################################################
+                % Crear vector que representa los tiempos en los que se toma una muestra
                 tms = (0:numel(signal_to_analyze)-1)/fs;
                 % Llamada a funcion para mostrar grafica de la senal y su respectivo
                 % escalograma
@@ -196,6 +198,7 @@ for i = 1:numel(signals)
             
                 [coefs_bump, freqs_bump] = cwt(signal_to_analyze, 'bump'); % Aplicar CWT
                 reconstructed_signal_bump = icwt(coefs_bump, 'bump',SignalMean=mean(signal_to_analyze));
+                reconstructed_signal_bump = reconstructed_signal_bump(:); % tramsformar a vector columna
                 %s.struct_bump.signal_vsc_rec = reconstructed_signal_bump;
                 signals(i).struct_bump.signal_vsc_rec = reconstructed_signal_bump;
                 %###########################################################################################
@@ -220,13 +223,8 @@ for i = 1:numel(signals)
 %#############################################################################
 %#############################################################################
 
-% Definir el arreglo
-arreglo = [1, 2, 3, 4, 5, 6];
-arreglo2 = [7,6,8,9,5,10];
-resta = (arreglo-arreglo2)
-% Calcular el promedio
-promedio = mean(arreglo);
-disp("la resta de los arreglos")
-% Mostrar el resultado
-disp("El promedio es: " + promedio);
 
+
+valor = 0.12345678;
+notacion_cientifica = sprintf('%.2e', valor); % '%.2e' muestra el número con dos decimales en notación científica
+disp(notacion_cientifica); % Muestra el valor en notación científica
