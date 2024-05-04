@@ -321,11 +321,21 @@ for i = 1:num_signals
     hold off;
 end
 
-cfs = cwt(signals(2).signal_vsc, 'morse');
-x = cwtmag2sig(abs(cfs),fs);
-fs2 = 1000;
-ts2 = 0:1/fs1:2-1/fs1;
-plot(ts2,signals(2).signal_vsc,ts2,xrec,"--")
+
+
+
+
+%coeficientes = cwt(signals(2).signal_vsc,'amor',VoicesPerOctave=13);
+[CFS,~,~,~,scalcfs] = cwt(signals(2).signal_vsc,'amor',ExtendSignal=false');
+xrec = cwtmag2sig(abs(CFS),...
+ Display=true,ScalingCoefficients=scalcfs);
+error = get_nmse(signals(1).signal_vsc, xrec);
+
+
+fs = 5; % Frecuencia de muestreo de 5 Hz
+n = 1024; % Número total de muestras
+ts = 0:1/fs:(n-1)/fs; % Vector de tiempo, desde 0 hasta la duración total
+plot(ts,signals(2).signal_vsc,ts,xrec,"--")
 xlabel("Time (s)")
 ylabel("Amplitude")
 legend("Original","Reconstructed")

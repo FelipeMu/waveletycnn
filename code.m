@@ -320,3 +320,22 @@ for i = 1:num_signals
     legend('Original', 'Reconstruida (bump)');
     hold off;
 end
+
+
+
+
+
+%coeficientes = cwt(signals(2).signal_vsc,'amor',VoicesPerOctave=13);
+[CFS,~,~,~,scalcfs] = cwt(signals(2).signal_vsc,ExtendSignal=false);
+xrec = cwtmag2sig(abs(CFS),...
+ Display=true,ScalingCoefficients=scalcfs);
+error = get_nmse(signals(2).signal_vsc, xrec);
+
+
+fs = 5; % Frecuencia de muestreo de 5 Hz
+n = 1024; % Número total de muestras
+ts = 0:1/fs:(n-1)/fs; % Vector de tiempo, desde 0 hasta la duración total
+plot(ts,signals(2).signal_vsc,ts,xrec,"--")
+xlabel("Time (s)")
+ylabel("Amplitude")
+legend("Original","Reconstructed")
