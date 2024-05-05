@@ -167,7 +167,7 @@ for i = 1:numel(signals)
                 
                 % Definir el rango de periodos para la reconstruccion con icwt
                 freqsrange_amor = [min_freq_amor max_freq_amor]; % Utilizar todo el rango    
-                %reconstructed_signal_amor = icwt(coefs_amor, 'amor', freqs_amor, freqsrange_amor, SignalMean=mean(signal_to_analyze)); % Aplicar icwt
+                %reconstructed_signal_amor = icwt(coefs_amor, 'amor', freqs_amor, freqsrange_amor,'ScalingCoefficients',); % Aplicar icwt
                 reconstructed_signal_amor = icwt(coefs_amor, 'amor', freqs_amor, freqsrange_amor, SignalMean=mean(signal_to_analyze)); % Aplicar icwt
                 reconstructed_signal_amor = reconstructed_signal_amor(:); % transformar a vector columna
                 signals(i).struct_amor.signal_vsc_rec = reconstructed_signal_amor;  % Se guarda signal_rec en su respectiva estructura
@@ -325,17 +325,34 @@ end
 
 
 
-%coeficientes = cwt(signals(2).signal_vsc,'amor',VoicesPerOctave=13);
-[CFS,~,~,~,scalcfs] = cwt(signals(2).signal_vsc,ExtendSignal=false);
+% UTILIZANDO cwtmag2sig()
+%{
+[CFS,~,~,~,scalcfs] = cwt(signals(1).signal_vsc,ExtendSignal=false);
 xrec = cwtmag2sig(abs(CFS),...
  Display=true,ScalingCoefficients=scalcfs);
-error = get_nmse(signals(2).signal_vsc, xrec);
+error = get_nmse(signals(1).signal_vsc, xrec);
+fs = 5; % Frecuencia de muestreo de 5 Hz
+n = 1024; % Número total de muestras
+ts = 0:1/fs:(n-1)/fs; % Vector de tiempo, desde 0 hasta la duración total
+plot(ts,signals(1).signal_vsc,ts,xrec,"--")
+xlabel("Time (s)")
+ylabel("Amplitude")
+legend("Original","Reconstructed")
+%}
 
+
+fb = cwtfilterbank(SignalLength=length(signals(2).signal_vsc),Boundary="periodic");
+psif = freqz(fb,FrequencyRange="twosided",IncludeLowpass=true);
+[coefs,~,~,scalcfs] = wt(fb,signals(2).signal_vsc);
+xrecAN = icwt(coefs,[],ScalingCoefficients=scalcfs,...
+    AnalysisFilterBank=psif);
+xrecAN = xrecAN(:);
+errorAN = get_nmse(signals(2).signal_vsc, xrecAN);
 
 fs = 5; % Frecuencia de muestreo de 5 Hz
 n = 1024; % Número total de muestras
 ts = 0:1/fs:(n-1)/fs; % Vector de tiempo, desde 0 hasta la duración total
-plot(ts,signals(2).signal_vsc,ts,xrec,"--")
+plot(ts,signals(2).signal_vsc,ts,xrecAN,"--")
 xlabel("Time (s)")
 ylabel("Amplitude")
 legend("Original","Reconstructed")
