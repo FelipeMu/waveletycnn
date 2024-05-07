@@ -344,7 +344,7 @@ legend("Original","Reconstructed")
 % WAVELET AMOR
 %##############
 % Estructura que almacena caracteristicas de la wavelet a aplicar:
-fb_amor = cwtfilterbank(SignalLength=length(signals(2).signal_vsc),Boundary="periodic", Wavelet="amor",SamplingFrequency=5);
+fb_amor = cwtfilterbank(SignalLength=length(signals(2).signal_vsc),Boundary="periodic", Wavelet="amor",SamplingFrequency=5,VoicesPerOctave=16);
 psif_amor = freqz(fb_amor,FrequencyRange="twosided",IncludeLowpass=true);
 [coefs_amor,~,~,scalcfs_amor] = wt(fb_amor,signals(2).signal_vsc);
 xrecAN_amor = icwt(coefs_amor,[],ScalingCoefficients=scalcfs_amor,...
@@ -364,18 +364,18 @@ legend("Original","Reconstructed")
 % WAVELET MORSE
 %##############
 % Estructura que almacena caracteristicas de la wavelet a aplicar:
-fb_bump = cwtfilterbank(SignalLength=length(signals(2).signal_vsc),Boundary="periodic",SamplingFrequency=5);
-psif_bump = freqz(fb_bump,FrequencyRange="twosided",IncludeLowpass=true);
-[coefs_bump,~,~,scalcfs_bump] = wt(fb_bump,signals(2).signal_vsc);
-xrecAN_bump = icwt(coefs_bump,[],ScalingCoefficients=scalcfs_bump,...
-    AnalysisFilterBank=psif_bump);
-xrecAN_bump = xrecAN_bump(:);
-errorAN_morse = get_nmse(signals(2).signal_vsc, xrecAN_bump);
+fb_morse = cwtfilterbank(SignalLength=length(signals(2).signal_vsc),Boundary="periodic",SamplingFrequency=5,TimeBandwidth=60,VoicesPerOctave=7);
+psif_morse = freqz(fb_morse,FrequencyRange="twosided",IncludeLowpass=true);
+[coefs_morse,~,~,scalcfs_morse] = wt(fb_morse,signals(2).signal_vsc);
+xrecAN_morse = icwt(coefs_morse,[],ScalingCoefficients=scalcfs_morse,...
+    AnalysisFilterBank=psif_morse);
+xrecAN_morse = xrecAN_morse(:);
+errorAN_morse = get_nmse(signals(2).signal_vsc, xrecAN_morse);
 
 fs = 5; % Frecuencia de muestreo de 5 Hz
 n = 1024; % Número total de muestras
 ts = 0:1/fs:(n-1)/fs; % Vector de tiempo, desde 0 hasta la duración total
-plot(ts,signals(2).signal_vsc,ts,xrecAN_bump,"--")
+plot(ts,signals(2).signal_vsc,ts,xrecAN_morse,"--")
 xlabel("Time (s)")
 ylabel("Amplitude")
 legend("Original","Reconstructed")
@@ -401,3 +401,11 @@ xlabel("Time (s)")
 ylabel("Amplitude")
 legend("Original","Reconstructed")
 
+
+
+% Para encontrar el minimo error, se procede a utilizar las siguientes
+% funciones. En ellas se realizan todas las combinaciones posibles de los
+% hiperparametros TimeBandwidth y VoicesPerOctave para encontrar el error
+% minimo de cada wavelet madre
+min_error_amor_bump(signals(1).signal_vsc, "bump");
+min_error_morse();
