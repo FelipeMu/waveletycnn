@@ -209,7 +209,7 @@ for i = 1:numel(signals)
             case 'morse'
             
                 %***[coefs_morse, freqs_morse] = cwt(signal_to_analyze, 'morse', fs); % Aplicar CWT
-                [coefs_morse, freqs_morse] = cwt(signal_to_analyze, 'morse', fs, VoicesPerOctave=48);
+                [coefs_bump, freqs_morse] = cwt(signal_to_analyze, 'morse', fs, VoicesPerOctave=48);
                 % Observar el rango de periodos
                 min_freq_morse = min(freqs_morse); % Periodo minimo
                 max_freq_morse = max(freqs_morse); % Periodo maximo
@@ -221,7 +221,7 @@ for i = 1:numel(signals)
 
 
                 %***reconstructed_signal_morse = icwt(coefs_morse, 'morse',SignalMean=mean(signal_to_analyze)); % Aplicar icwt
-                reconstructed_signal_morse = icwt(coefs_morse, 'morse', SignalMean=mean(signal_to_analyze), VoicesPerOctave=48); % Aplicar icwt
+                reconstructed_signal_morse = icwt(coefs_bump, 'morse', SignalMean=mean(signal_to_analyze), VoicesPerOctave=48); % Aplicar icwt
                 reconstructed_signal_morse = reconstructed_signal_morse(:); % transformar a vector columna
                 signals(i).struct_morse.signal_vsc_rec = reconstructed_signal_morse; % Se guarda signal_rec en su respectiva estructura
                 %###########################################################################################
@@ -235,7 +235,7 @@ for i = 1:numel(signals)
                 tms = (0:numel(signal_to_analyze)-1)/fs;
                 % Llamada a funcion para mostrar grafica de la senal y su respectivo
                 % escalograma
-                plot_signal_and_scalogram(tms, signal_to_analyze, freqs_morse, coefs_morse, 'morse', s.name_file)
+                plot_signal_and_scalogram(tms, signal_to_analyze, freqs_morse, coefs_bump, 'morse', s.name_file)
             case 'bump'
             
                 [coefs_bump, freqs_bump] = cwt(signal_to_analyze, 'bump',fs); % Aplicar CWT
@@ -340,19 +340,64 @@ ylabel("Amplitude")
 legend("Original","Reconstructed")
 %}
 
-
-fb = cwtfilterbank(SignalLength=length(signals(2).signal_vsc),Boundary="periodic");
-psif = freqz(fb,FrequencyRange="twosided",IncludeLowpass=true);
-[coefs,~,~,scalcfs] = wt(fb,signals(2).signal_vsc);
-xrecAN = icwt(coefs,[],ScalingCoefficients=scalcfs,...
-    AnalysisFilterBank=psif);
-xrecAN = xrecAN(:);
-errorAN = get_nmse(signals(2).signal_vsc, xrecAN);
+%##############
+% WAVELET AMOR
+%##############
+% Estructura que almacena caracteristicas de la wavelet a aplicar:
+fb_amor = cwtfilterbank(SignalLength=length(signals(2).signal_vsc),Boundary="periodic", Wavelet="amor",SamplingFrequency=5);
+psif_amor = freqz(fb_amor,FrequencyRange="twosided",IncludeLowpass=true);
+[coefs_amor,~,~,scalcfs_amor] = wt(fb_amor,signals(2).signal_vsc);
+xrecAN_amor = icwt(coefs_amor,[],ScalingCoefficients=scalcfs_amor,...
+    AnalysisFilterBank=psif_amor);
+xrecAN_amor = xrecAN_amor(:);
+errorAN_amor = get_nmse(signals(2).signal_vsc, xrecAN_amor);
 
 fs = 5; % Frecuencia de muestreo de 5 Hz
 n = 1024; % Número total de muestras
 ts = 0:1/fs:(n-1)/fs; % Vector de tiempo, desde 0 hasta la duración total
-plot(ts,signals(2).signal_vsc,ts,xrecAN,"--")
+plot(ts,signals(2).signal_vsc,ts,xrecAN_amor,"--")
 xlabel("Time (s)")
 ylabel("Amplitude")
 legend("Original","Reconstructed")
+
+%##############
+% WAVELET MORSE
+%##############
+% Estructura que almacena caracteristicas de la wavelet a aplicar:
+fb_bump = cwtfilterbank(SignalLength=length(signals(2).signal_vsc),Boundary="periodic",SamplingFrequency=5);
+psif_bump = freqz(fb_bump,FrequencyRange="twosided",IncludeLowpass=true);
+[coefs_bump,~,~,scalcfs_bump] = wt(fb_bump,signals(2).signal_vsc);
+xrecAN_bump = icwt(coefs_bump,[],ScalingCoefficients=scalcfs_bump,...
+    AnalysisFilterBank=psif_bump);
+xrecAN_bump = xrecAN_bump(:);
+errorAN_morse = get_nmse(signals(2).signal_vsc, xrecAN_bump);
+
+fs = 5; % Frecuencia de muestreo de 5 Hz
+n = 1024; % Número total de muestras
+ts = 0:1/fs:(n-1)/fs; % Vector de tiempo, desde 0 hasta la duración total
+plot(ts,signals(2).signal_vsc,ts,xrecAN_bump,"--")
+xlabel("Time (s)")
+ylabel("Amplitude")
+legend("Original","Reconstructed")
+
+
+%##############
+% WAVELET BUMP
+%##############
+% Estructura que almacena caracteristicas de la wavelet a aplicar:
+fb_bump = cwtfilterbank(SignalLength=length(signals(2).signal_vsc),Boundary="periodic", Wavelet="bump", SamplingFrequency=5);
+psif_bump = freqz(fb_bump,FrequencyRange="twosided",IncludeLowpass=true);
+[coefs_bump,~,~,scalcfs_bump] = wt(fb_bump,signals(2).signal_vsc);
+xrecAN_bump = icwt(coefs_bump,[],ScalingCoefficients=scalcfs_bump,...
+    AnalysisFilterBank=psif_bump);
+xrecAN_bump = xrecAN_bump(:);
+errorAN_bump = get_nmse(signals(2).signal_vsc, xrecAN_bump);
+
+fs = 5; % Frecuencia de muestreo de 5 Hz
+n = 1024; % Número total de muestras
+ts = 0:1/fs:(n-1)/fs; % Vector de tiempo, desde 0 hasta la duración total
+plot(ts,signals(2).signal_vsc,ts,xrecAN_bump,"--")
+xlabel("Time (s)")
+ylabel("Amplitude")
+legend("Original","Reconstructed")
+
