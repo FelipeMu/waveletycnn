@@ -44,7 +44,7 @@ files_csv = dir(fullfile(carpeta_csv, '*.csv'));
 
 
 % Estructura de wavelet: AMOR
-structure_amor = struct('name_wavelet', 'amor', 'error', 0.0, 'signal_vsc_rec', []);
+structure_amor = struct('name_wavelet', 'amor', 'error', 0.0, 'complex_coeffs_amor', [], 'scals_coeffs_amor', [], 'signal_vsc_rec', []);
 
 % Estructura de wavelet: MORSE
 structure_morse = struct('name_wavelet', 'morse', 'error', 0.0, 'signal_vsc_rec', []);
@@ -134,13 +134,15 @@ end
 % Aplicar CWT y espectros para cada senal (por ahora a las senales de VSC)
 for i = 1:numel(signals)
     s = signals(i);
-    disp("Analizando archivo: %s");
+    disp("Analizando archivo:");
     disp(s.name_file);
     signal_to_analyze = s.signal_vsc; % Senal para analizar
 
     fb_amor = cwtfilterbank(SignalLength=length(signal_to_analyze),Boundary="periodic", Wavelet="amor",SamplingFrequency=5,VoicesPerOctave=10); % se obtiene una estructura (banco de filtros)
-    [psif_amor, frequences_amor] = freqz(fb_amor,FrequencyRange="twosided",IncludeLowpass=true);
+    psif_amor = freqz(fb_amor,FrequencyRange="twosided",IncludeLowpass=true);
     [coefs_amor,freqs_amor,~,scalcfs_amor] = wt(fb_amor,signal_to_analyze); % se aplica la transformada continua a la senal
+    signals(i).struct_amor.complex_coeffs_amor = coefs_amor; % Se guarda la matriz de coeficientes en su respectivo atributo de la estructura
+    signals(i).struct_amor.scals_coeffs_amor = scalcfs_amor; % Se guarda el vector de escalas en su respectivo atributo de la estructura
     xrecAN_amor = icwt(coefs_amor,[],ScalingCoefficients=scalcfs_amor,AnalysisFilterBank=psif_amor); % se realiza la transformada inversa continua de la senal
     xrecAN_amor = xrecAN_amor(:); % la reconstruccion de la senal se pasa a formato vector columna
     signals(i).struct_amor.signal_vsc_rec = xrecAN_amor;  % Se guarda signal_rec en su respectiva estructura
@@ -194,7 +196,7 @@ end
 % hiperparametros TimeBandwidth y VoicesPerOctave para encontrar el error
 % minimo de cada wavelet madre
 min_error_amor_bump(signals(1).signal_vsc, "bump"); % para wavelet AMOR y BUMP
-min_error_morse(); % para wavelet MORSE
+min_error_morse(signals(1).signal_vsc); % para wavelet MORSE
 
 %###########################################################################################################
 %###########################################################################################################
