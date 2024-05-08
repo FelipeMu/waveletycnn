@@ -30,13 +30,14 @@ file_names = {files_csv.name};
 fprintf('Archivos encontrados:\n');
 disp(file_names);
 
-%############################################################
-%############################################################
-%############################################################
+%###########################################################################################################
+%###########################################################################################################
+%###########################################################################################################
+
 
 % Crear lista de estructuras. cada estructura le corresponde a un individuo
 % Directorio donde están los archivos CSV
-carpeta_csv = 'D:/TT/Memoria/waveletycnn/signals';
+carpeta_csv = 'D:/TT/Memoria/waveletycnn/codigo_matlab/codigo_fuente/signals';
 
 % Obtener lista de archivos CSV en la carpeta
 files_csv = dir(fullfile(carpeta_csv, '*.csv'));
@@ -52,9 +53,8 @@ structure_morse = struct('name_wavelet', 'morse', 'error', 0.0, 'signal_vsc_rec'
 structure_bump = struct('name_wavelet', 'bump', 'error', 0.0, 'signal_vsc_rec', []);
 
 
-
 % Inicializar el arreglo de estructuras con los campos necesarios
-num_files = numel(files_csv);
+num_files = numel(files_csv); % Se almacena la cantidad de archivos csv leidos
 signals(num_files) = struct('name_file', '', 'signal_pam', [], 'signal_vsc', [], 'struct_amor', structure_amor, 'struct_morse', structure_morse, 'struct_bump', structure_bump);
 % Definir la estructura con cada uno de sus atributos, tomando en cuenta la
 % cantidad de archivos encontrados (senales de invididuos) en la carpeta.
@@ -100,10 +100,10 @@ fprintf('----------------------------------------\n');
 for i = 1:num_files
     disp(signals(i)); % Muestra la estructura de cada elemento
 end
+%###########################################################################################################
+%###########################################################################################################
+%###########################################################################################################
 
-%############################################################
-%############################################################
-%############################################################
 
 % Recorrer el arreglo de estructuras 'signals'
 for idx = 1:numel(signals)
@@ -126,169 +126,54 @@ for idx = 1:numel(signals)
     fprintf('\n'); % Espacio entre salidas para claridad
 end
 
-%##########################################################################
-%##########################################################################
-%##########################################################################
+%###########################################################################################################
+%###########################################################################################################
+%###########################################################################################################
 
-% Se define arreglo que almacena las wavelet continuas disponibles
-wavelets_cwt = ["amor", "morse", "bump"];
 
 % Aplicar CWT y espectros para cada senal (por ahora a las senales de VSC)
 for i = 1:numel(signals)
     s = signals(i);
-    disp("Estamos analizando el archivo:");
+    disp("Analizando archivo: %s");
     disp(s.name_file);
-    for w = 1:numel(wavelets_cwt)
-        % Paso 1: Elegir la wavelet
-        wname = wavelets_cwt(w); % Wavelet 
-        signal_to_analyze = s.signal_vsc; % Señal para analizar
-        
+    signal_to_analyze = s.signal_vsc; % Senal para analizar
 
-        
-        % Paso 2: Preparar las entradas para FFT y CWT
-        %n = length(s.signal_vsc); % Cantidad de muestras
-        %t = linspace(0, n * ts, n); % Vector de tiempo
-        % Paso 3: Analizar FFT
-        %apply_fft(signal_to_analyze, ts); % Llamar a la función FFT
-        %scales = 1:512; % Escalas para la CWT. La funcion cwt calcula
-        % la escala min y max de la forma mas apropiada
-        
-        
-        % Guardar la reconstruccion en su respectiva struct dependiendo de
-        % la wavelet madre que se esta ejecutando.
-        switch wname
-            case 'amor'
-           
-                [coefs_amor, freqs_amor] = cwt(signal_to_analyze, 'amor', fs); % Aplicar CWT
+    fb_amor = cwtfilterbank(SignalLength=length(signal_to_analyze),Boundary="periodic", Wavelet="amor",SamplingFrequency=5,VoicesPerOctave=10); % se obtiene una estructura (banco de filtros)
+    [psif_amor, frequences_amor] = freqz(fb_amor,FrequencyRange="twosided",IncludeLowpass=true);
+    [coefs_amor,freqs_amor,~,scalcfs_amor] = wt(fb_amor,signal_to_analyze); % se aplica la transformada continua a la senal
+    xrecAN_amor = icwt(coefs_amor,[],ScalingCoefficients=scalcfs_amor,AnalysisFilterBank=psif_amor); % se realiza la transformada inversa continua de la senal
+    xrecAN_amor = xrecAN_amor(:); % la reconstruccion de la senal se pasa a formato vector columna
+    signals(i).struct_amor.signal_vsc_rec = xrecAN_amor;  % Se guarda signal_rec en su respectiva estructura
+    errorAN_amor = get_nmse(signal_to_analyze, signals(i).struct_amor.signal_vsc_rec); % se calcula el nmse
+    signals(i).struct_amor.error = errorAN_amor; % se almacena el respectivo nmse en la estructura de la senal analizada
 
-                % Observar el rango de periodos
-                min_freq_amor = min(freqs_amor); % Periodo minimo
-                max_freq_amor = max(freqs_amor); % Periodo maximo
-                
-                % Definir el rango de periodos para la reconstruccion con icwt
-                freqsrange_amor = [min_freq_amor max_freq_amor]; % Utilizar todo el rango    
-                %reconstructed_signal_amor = icwt(coefs_amor, 'amor', freqs_amor, freqsrange_amor,'ScalingCoefficients',); % Aplicar icwt
-                reconstructed_signal_amor = icwt(coefs_amor, 'amor', freqs_amor, freqsrange_amor, SignalMean=mean(signal_to_analyze)); % Aplicar icwt
-                reconstructed_signal_amor = reconstructed_signal_amor(:); % transformar a vector columna
-                signals(i).struct_amor.signal_vsc_rec = reconstructed_signal_amor;  % Se guarda signal_rec en su respectiva estructura
-                %###########################################################################################
-                % Se procede a calcular el NMSE:
-                nmse_amor = get_nmse(signals(i).signal_vsc, signals(i).struct_amor.signal_vsc_rec);
-                % Se asigna el NMSE a la respectiva estructura de la
-                % wavelet madre:
-                signals(i).struct_amor.error = nmse_amor;
-                %###########################################################################################
-                % Crear vector que representa los tiempos en los que se toma una muestra
-                tms = (0:numel(signal_to_analyze)-1)/fs;
-                % Llamada a funcion para mostrar grafica de la senal y su respectivo
-                % escalograma
-                plot_signal_and_scalogram(tms, signal_to_analyze, freqs_amor, coefs_amor, 'amor',s.name_file)
-
-            
-                            
-                % Aplicar la Transformada de Fourier
-                n = length(signal_to_analyze); % Número total de muestras
-                y = fft(signal_to_analyze); % Transformada de Fourier
-                
-                % Calcular el vector de frecuencias
-                f = (0:n-1) * (fs / n); % Frecuencias correspondientes a cada componente del FFT
-                
-                % Calcular la magnitud del FFT (solo la mitad debido a la simetría)
-                magnitude = abs(y) / n; % Normalizar la magnitud
-                magnitude = magnitude(1:floor(n/2)); % Tomar la mitad debido a la simetría
-                f = f(1:floor(n/2)); % Frecuencias correspondientes a la magnitud
-                
-                % Visualizar el espectro de frecuencias
-                figure;
-                plot(f, magnitude); % Graficar magnitud vs frecuencia
-                xlabel('Frecuencia (Hz)');
-                ylabel('Magnitud');
-                title('Transformada de Fourier de la señal');
-
-
-            case 'morse'
-            
-                %***[coefs_morse, freqs_morse] = cwt(signal_to_analyze, 'morse', fs); % Aplicar CWT
-                [coefs_bump, freqs_morse] = cwt(signal_to_analyze, 'morse', fs, VoicesPerOctave=48);
-                % Observar el rango de periodos
-                min_freq_morse = min(freqs_morse); % Periodo minimo
-                max_freq_morse = max(freqs_morse); % Periodo maximo
-                
-                % Definir el rango de periodos para la reconstruccion con icwt
-                freqsrange_morse = [min_freq_morse max_freq_morse]; % Utilizar todo el rango 
-
-                [minfreq,maxfreq] = cwtfreqbounds(length(signal_to_analyze),fs);
-
-
-                %***reconstructed_signal_morse = icwt(coefs_morse, 'morse',SignalMean=mean(signal_to_analyze)); % Aplicar icwt
-                reconstructed_signal_morse = icwt(coefs_bump, 'morse', SignalMean=mean(signal_to_analyze), VoicesPerOctave=48); % Aplicar icwt
-                reconstructed_signal_morse = reconstructed_signal_morse(:); % transformar a vector columna
-                signals(i).struct_morse.signal_vsc_rec = reconstructed_signal_morse; % Se guarda signal_rec en su respectiva estructura
-                %###########################################################################################
-                % Se procede a calcular el NMSE:
-                nmse_morse = get_nmse(signals(i).signal_vsc, reconstructed_signal_morse);
-                % Se asigna el NMSE a la respectiva estructura de la
-                % wavelet madre:
-                signals(i).struct_morse.error = nmse_morse;
-                %###########################################################################################
-                % Crear vector que representa los tiempos en los que se toma una muestra
-                tms = (0:numel(signal_to_analyze)-1)/fs;
-                % Llamada a funcion para mostrar grafica de la senal y su respectivo
-                % escalograma
-                plot_signal_and_scalogram(tms, signal_to_analyze, freqs_morse, coefs_bump, 'morse', s.name_file)
-            case 'bump'
-            
-                [coefs_bump, freqs_bump] = cwt(signal_to_analyze, 'bump',fs); % Aplicar CWT
-                reconstructed_signal_bump = icwt(coefs_bump, 'bump',SignalMean=mean(signal_to_analyze)); % Aplicar icwt
-                reconstructed_signal_bump = reconstructed_signal_bump(:); % tramsformar a vector columna
-                signals(i).struct_bump.signal_vsc_rec = reconstructed_signal_bump;  % Se guarda signal_rec en su respectiva estructura
-                %###########################################################################################
-                % Se procede a calcular el NMSE:
-                nmse_bump = get_nmse(signals(i).signal_vsc, reconstructed_signal_bump);
-                % Se asigna el NMSE a la respectiva estructura de la
-                % wavelet madre:
-                signals(i).struct_bump.error = nmse_bump;
-                %###########################################################################################
-                % Crear vector que representa los tiempos en los que se toma una muestra
-                tms = (0:numel(signal_to_analyze)-1)/fs;
-                % Llamada a funcion para mostrar grafica de la senal y su respectivo
-                % escalograma
-                plot_signal_and_scalogram(tms, signal_to_analyze, freqs_bump, coefs_bump, 'bump', s.name_file)
-            otherwise
-                fprintf('No se ha encontrado conincidencia con dicha wavelet')
-        end
-    end
+    %###########################################################################################
+    % Crear vector que representa los tiempos en los que se toma una muestra
+    tms = (0:numel(signal_to_analyze)-1)/fs;
+    % Llamada a funcion para mostrar grafica de la senal y su respectivo
+    % escalograma
+    plot_signal_and_scalogram(tms, signal_to_analyze, freqs_amor, coefs_amor, 'amor',s.name_file)
  end 
 
-%#############################################################################
-%#############################################################################
-%#############################################################################
-
-
-
-%valor = 0.12345678;
-%notacion_cientifica = sprintf('%.2e', valor); % '%.2e' muestra el número con dos decimales en notación científica
-%disp(notacion_cientifica); % Muestra el valor en notación científica
+%###########################################################################################################
+%###########################################################################################################
+%###########################################################################################################
 
 
 % Ejemplo de cómo crear una figura con múltiples secciones para comparar señales y mostrar errores
 
 % Crear una nueva figura
 figure;
-
-% Definir el número de filas y columnas para los subplots
-num_signals = 2; % En este caso, estamos trabajando con signal(1) y signal(2)
-
 % Crear subplots para la señal original y las reconstrucciones con amor, morse, bump
 % y mostrar el error NMSE en el costado
-for i = 1:num_signals
+for i = 1:num_files
     s = signals(i); % Obtenemos la estructura correspondiente a la señal actual
 
     % Definir el índice base para los subplots (para separar las señales)
-    base_idx = (i - 1) * 3;
+    base_idx = (i - 1) * 2;
 
     % Crear subplots para comparar las señales originales con las reconstruidas por amor
-    subplot(num_signals, 3, base_idx + 1);
+    subplot(num_files, 3, base_idx + 1);
     hold on;
     plot(s.signal_vsc, 'b'); % Señal original
     plot(s.struct_amor.signal_vsc_rec, 'r--'); % Señal reconstruida por amor
@@ -297,115 +182,25 @@ for i = 1:num_signals
     ylabel('Amplitud');
     legend('Original', 'Reconstruida (amor)');
     hold off;
-
-    % Crear subplots para comparar las señales originales con las reconstruidas por morse
-    subplot(num_signals, 3, base_idx + 2);
-    hold on;
-    plot(s.signal_vsc, 'b'); % Señal original
-    plot(s.struct_morse.signal_vsc_rec, 'r--'); % Señal reconstruida por morse
-    title(sprintf('Señal VSC vs Morse (NMSE: %.2e) [%s]', s.struct_morse.error, s.name_file));
-    xlabel('Tiempo');
-    ylabel('Amplitud');
-    legend('Original', 'Reconstruida (morse)');
-    hold off;
-
-    % Crear subplots para comparar las señales originales con las reconstruidas por bump
-    subplot(num_signals, 3, base_idx + 3);
-    hold on;
-    plot(s.signal_vsc, 'b'); % Señal original
-    plot(s.struct_bump.signal_vsc_rec, 'r--'); % Señal reconstruida por bump
-    title(sprintf('Señal VSC vs Bump (NMSE: %.2e) [%s]', s.struct_bump.error, s.name_file));
-    xlabel('Tiempo');
-    ylabel('Amplitud');
-    legend('Original', 'Reconstruida (bump)');
-    hold off;
 end
+%###########################################################################################################
+%###########################################################################################################
+%###########################################################################################################
 
-
-
-
-
-% UTILIZANDO cwtmag2sig()
-%{
-[CFS,~,~,~,scalcfs] = cwt(signals(1).signal_vsc,ExtendSignal=false);
-xrec = cwtmag2sig(abs(CFS),...
- Display=true,ScalingCoefficients=scalcfs);
-error = get_nmse(signals(1).signal_vsc, xrec);
-fs = 5; % Frecuencia de muestreo de 5 Hz
-n = 1024; % Número total de muestras
-ts = 0:1/fs:(n-1)/fs; % Vector de tiempo, desde 0 hasta la duración total
-plot(ts,signals(1).signal_vsc,ts,xrec,"--")
-xlabel("Time (s)")
-ylabel("Amplitude")
-legend("Original","Reconstructed")
-%}
-
-%##############
-% WAVELET AMOR
-%##############
-% Estructura que almacena caracteristicas de la wavelet a aplicar:
-fb_amor = cwtfilterbank(SignalLength=length(signals(2).signal_vsc),Boundary="periodic", Wavelet="amor",SamplingFrequency=5,VoicesPerOctave=16);
-psif_amor = freqz(fb_amor,FrequencyRange="twosided",IncludeLowpass=true);
-[coefs_amor,~,~,scalcfs_amor] = wt(fb_amor,signals(2).signal_vsc);
-xrecAN_amor = icwt(coefs_amor,[],ScalingCoefficients=scalcfs_amor,...
-    AnalysisFilterBank=psif_amor);
-xrecAN_amor = xrecAN_amor(:);
-errorAN_amor = get_nmse(signals(2).signal_vsc, xrecAN_amor);
-
-fs = 5; % Frecuencia de muestreo de 5 Hz
-n = 1024; % Número total de muestras
-ts = 0:1/fs:(n-1)/fs; % Vector de tiempo, desde 0 hasta la duración total
-plot(ts,signals(2).signal_vsc,ts,xrecAN_amor,"--")
-xlabel("Time (s)")
-ylabel("Amplitude")
-legend("Original","Reconstructed")
-
-%##############
-% WAVELET MORSE
-%##############
-% Estructura que almacena caracteristicas de la wavelet a aplicar:
-fb_morse = cwtfilterbank(SignalLength=length(signals(2).signal_vsc),Boundary="periodic",SamplingFrequency=5,TimeBandwidth=60,VoicesPerOctave=7);
-psif_morse = freqz(fb_morse,FrequencyRange="twosided",IncludeLowpass=true);
-[coefs_morse,~,~,scalcfs_morse] = wt(fb_morse,signals(2).signal_vsc);
-xrecAN_morse = icwt(coefs_morse,[],ScalingCoefficients=scalcfs_morse,...
-    AnalysisFilterBank=psif_morse);
-xrecAN_morse = xrecAN_morse(:);
-errorAN_morse = get_nmse(signals(2).signal_vsc, xrecAN_morse);
-
-fs = 5; % Frecuencia de muestreo de 5 Hz
-n = 1024; % Número total de muestras
-ts = 0:1/fs:(n-1)/fs; % Vector de tiempo, desde 0 hasta la duración total
-plot(ts,signals(2).signal_vsc,ts,xrecAN_morse,"--")
-xlabel("Time (s)")
-ylabel("Amplitude")
-legend("Original","Reconstructed")
-
-
-%##############
-% WAVELET BUMP
-%##############
-% Estructura que almacena caracteristicas de la wavelet a aplicar:
-fb_bump = cwtfilterbank(SignalLength=length(signals(2).signal_vsc),Boundary="periodic", Wavelet="bump", SamplingFrequency=5);
-psif_bump = freqz(fb_bump,FrequencyRange="twosided",IncludeLowpass=true);
-[coefs_bump,~,~,scalcfs_bump] = wt(fb_bump,signals(2).signal_vsc);
-xrecAN_bump = icwt(coefs_bump,[],ScalingCoefficients=scalcfs_bump,...
-    AnalysisFilterBank=psif_bump);
-xrecAN_bump = xrecAN_bump(:);
-errorAN_bump = get_nmse(signals(2).signal_vsc, xrecAN_bump);
-
-fs = 5; % Frecuencia de muestreo de 5 Hz
-n = 1024; % Número total de muestras
-ts = 0:1/fs:(n-1)/fs; % Vector de tiempo, desde 0 hasta la duración total
-plot(ts,signals(2).signal_vsc,ts,xrecAN_bump,"--")
-xlabel("Time (s)")
-ylabel("Amplitude")
-legend("Original","Reconstructed")
-
-
-
+% BUSQUEDA EL MINIMO NMSE PARA CADA WAVELET, TENIENDO EN CUENTA LOS
+% HIPERPARAMETROS QUE UTILIZAN:
 % Para encontrar el minimo error, se procede a utilizar las siguientes
 % funciones. En ellas se realizan todas las combinaciones posibles de los
 % hiperparametros TimeBandwidth y VoicesPerOctave para encontrar el error
 % minimo de cada wavelet madre
-min_error_amor_bump(signals(1).signal_vsc, "bump");
-min_error_morse();
+min_error_amor_bump(signals(1).signal_vsc, "bump"); % para wavelet AMOR y BUMP
+min_error_morse(); % para wavelet MORSE
+
+%###########################################################################################################
+%###########################################################################################################
+%###########################################################################################################
+
+% Se procede aplicar ruido gaussiano con un coeficiente de variacion entre
+% [5%, 10%], y posteriormente un filtro Butterworth de octavo orden, con
+% frecuencia de corte de 0.25 Hz.
+apply_noise_and_filter(signals, fs, 30);
