@@ -44,7 +44,7 @@ files_csv = dir(fullfile(carpeta_csv, '*.csv'));
 
 
 % Estructura de wavelet: AMOR
-structure_amor = struct('name_wavelet', 'amor', 'error', 0.0, 'complex_coeffs_amor', [], 'scals_coeffs_amor', [], 'psif_amor', [], 'signal_vsc_rec', []);
+structure_amor = struct('name_wavelet', 'amor', 'error', 0.0, 'complex_coeffs_amor', [], 'matrix_real', [], 'matrix_imag', [], 'scals_coeffs_amor', [], 'psif_amor', [], 'signal_vsc_rec', []);
 
 % Estructura de wavelet: MORSE
 structure_morse = struct('name_wavelet', 'morse', 'error', 0.0, 'signal_vsc_rec', []);
@@ -143,6 +143,8 @@ for i = 1:numel(signals)
     signals(i).struct_amor.psif_amor = psif_amor; % Se guarda las respuestas de las frecuencias en el atributo de la estructura
     [coefs_amor,freqs_amor,~,scalcfs_amor] = wt(fb_amor,signal_to_analyze); % se aplica la transformada continua a la senal
     signals(i).struct_amor.complex_coeffs_amor = coefs_amor; % Se guarda la matriz de coeficientes en su respectivo atributo de la estructura
+    signals(i).struct_amor.matrix_real = real(coefs_amor); % Se guarda la parte real de la matrix compleja de coeficientes
+    signals(i).struct_amor.matrix_imag = imag(coefs_amor); % Se guarda la parte imaginaria de la matrix compleja de coeficientes
     signals(i).struct_amor.scals_coeffs_amor = scalcfs_amor; % Se guarda el vector de escalas en su respectivo atributo de la estructura
     xrecAN_amor = icwt(coefs_amor,[],ScalingCoefficients=scalcfs_amor,AnalysisFilterBank=psif_amor); % se realiza la transformada inversa continua de la senal
     xrecAN_amor = xrecAN_amor(:); % la reconstruccion de la senal se pasa a formato vector columna
@@ -187,14 +189,6 @@ for i = 1:num_files
     hold off;
 end
 
-partesReales = [[1,1,1],[2,2,2],[3,3,3]];
-partesImaginarias = [[-1,-1,-1],[-2,-2,-2],[-3,-3,-3]];
-% Concatenar las partes real, imaginaria y escalas como nuevos canales
-inputData = cat(3, partesReales, partesImaginarias, escalasExpandido);
-
-
-
-
 %###########################################################################################################
 %###########################################################################################################
 %###########################################################################################################
@@ -209,10 +203,14 @@ min_error_amor_bump(signals(1).signal_vsc, "bump"); % para wavelet AMOR y BUMP
 min_error_morse(signals(1).signal_vsc); % para wavelet MORSE
 
 %###########################################################################################################
-%###########################################################################################################
+%####################### Aplicacion de ruido Gaussiano y filtro Butterworth ################################
 %###########################################################################################################
 
 % Se procede aplicar ruido gaussiano con un coeficiente de variacion entre
 % [5%, 10%], y posteriormente un filtro Butterworth de octavo orden, con
 % frecuencia de corte de 0.25 Hz.
 apply_noise_and_filter(signals, fs, 30);
+
+%###########################################################################################################
+%############################ Red profunda [U-Net] Train and Validation ####################################
+%###########################################################################################################

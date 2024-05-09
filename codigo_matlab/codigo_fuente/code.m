@@ -202,11 +202,26 @@ end
 min_error_amor_bump(signals(1).signal_vsc, "bump"); % para wavelet AMOR y BUMP
 min_error_morse(signals(1).signal_vsc); % para wavelet MORSE
 
+
+
+
+
 %###########################################################################################################
-%###########################################################################################################
+%####################### Aplicacion de ruido Gaussiano y filtro Butterworth ################################
 %###########################################################################################################
 
 % Se procede aplicar ruido gaussiano con un coeficiente de variacion entre
 % [5%, 10%], y posteriormente un filtro Butterworth de octavo orden, con
 % frecuencia de corte de 0.25 Hz.
 apply_noise_and_filter(signals, fs, 30);
+
+
+
+
+
+
+
+%###########################################################################################################
+%############################ Red profunda [U-Net] Train and Validation ####################################
+%###########################################################################################################
+
