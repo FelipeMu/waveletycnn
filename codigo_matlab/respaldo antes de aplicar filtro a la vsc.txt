@@ -212,7 +212,7 @@ min_error_morse(signals(1).signal_vsc); % para wavelet MORSE
 
 % Se procede aplicar ruido gaussiano con un coeficiente de variacion entre
 % [5%, 10%], y posteriormente un filtro Butterworth de octavo orden, con
-% frecuencia de corte de 0.25 Hz. (estructura signals, frecuencia de muestreo, cantidad de senales con ruido)
+% frecuencia de corte de 0.25 Hz.
 apply_noise_and_filter(signals, fs, 30);
 
 
