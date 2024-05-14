@@ -138,7 +138,7 @@ for i = 1:numel(signals)
     disp(s.name_file);
     signal_to_analyze = s.signal_vsc; % Senal para analizar
     % WAVELET MADRE CONTINUA A UTILIZAR: Analytic Morlet (Gabor) Wavelet
-    fb_amor = cwtfilterbank(SignalLength=length(signal_to_analyze),Boundary="periodic", Wavelet="amor",SamplingFrequency=5,VoicesPerOctave=4); % se obtiene una estructura (banco de filtros)
+    fb_amor = cwtfilterbank(SignalLength=length(signal_to_analyze),Boundary="periodic", Wavelet="amor",SamplingFrequency=5,VoicesPerOctave=5); % se obtiene una estructura (banco de filtros)
     psif_amor = freqz(fb_amor,FrequencyRange="twosided",IncludeLowpass=true); % psif_amor: Como cada filtro responde a diferentes frecuencias. ayuda a comprender como se distribuyen las frecuencias a lo largo de mi señal
     signals(i).struct_amor.psif_amor = psif_amor; % Se guarda las respuestas de las frecuencias en el atributo de la estructura
     [coefs_amor,freqs_amor,~,scalcfs_amor] = wt(fb_amor,signal_to_analyze); % se aplica la transformada continua a la senal
@@ -343,26 +343,42 @@ end
 
 
 %###########################################################################################################
-%############################ Red profunda [U-Net] Trainning ################################################
+%############################ Red profunda [U-Net] Trainning ###############################################
 %###########################################################################################################
 
-% Definir la arquitectura de la red U-Net
-capas_entrada = imageInputLayer([72 1024 2]); % Capa de entrada para los datos (dos canales)
-num_filtros = 64; % Número de filtros para las capas convolucionales
+% Obtener dimensiones de la matriz compleja para luego crear la capa de
+% entrada:
+mc = struct_noises(1).matrix_complex_pam;
+[num_rows, num_columns] = size(mc); % Se obtiene la cantidad de filas y columnas de la matriz compleja
 
-% Codificador
-conv1 = convolution2dLayer(3, num_filtros, 'Padding', 'same');
+% Definir la arquitectura de la red U-Net
+input_layer = imageInputLayer([num_rows num_columns 2]); % Capa de entrada para los datos (dos canales)
+num_filters = 64; % Numero de filtros para las capas convolucionales (comenzar con 64)
+
+%##########################################################################
+%##########################################################################
+
+%###########################
+% Codificador ##############
+%###########################
+conv1 = convolution2dLayer(3, num_filters, 'Padding', 'same');
 relu1 = reluLayer();
-conv2 = convolution2dLayer(3, num_filtros, 'Padding', 'same');
+conv2 = convolution2dLayer(3, num_filters, 'Padding', 'same');
 relu2 = reluLayer();
 pool1 = maxPooling2dLayer(2, 'Stride', 2);
-
-% Decodificador
-convT1 = transposedConv2dLayer(2, num_filtros, 'Stride', 2);
-conv3 = convolution2dLayer(3, num_filtros, 'Padding', 'same');
+%###########################
+% Decodificador ############
+%###########################
+convT1 = transposedConv2dLayer(2, num_filters, 'Stride', 2);
+conv3 = convolution2dLayer(3, num_filters, 'Padding', 'same');
 relu3 = reluLayer();
-conv4 = convolution2dLayer(3, num_filtros, 'Padding', 'same');
+conv4 = convolution2dLayer(3, num_filters, 'Padding', 'same');
 relu4 = reluLayer();
+
+%##########################################################################
+%##########################################################################
+
+
 
 % Capa de salida
 conv5 = convolution2dLayer(1, 1, 'Padding', 'same'); % Un solo canal de salida para la parte real
@@ -372,23 +388,51 @@ conv6 = convolution2dLayer(1, 1, 'Padding', 'same'); % Un solo canal de salida p
 concatenar = concatenationLayer(3, 2);
 
 % Combinar las capas en la red
-red_unet = [capas_entrada; conv1; relu1; conv2; relu2; pool1; 
+red_unet = [input_layer; conv1; relu1; conv2; relu2; pool1; 
             convT1; conv3; relu3; conv4; relu4; concatenar];
 
-% Especificar la configuración del entrenamiento
+
+
+
+
+%###########################################################################################################
+%#################### Especificar la configuracion del entrenamiento #######################################
+%###########################################################################################################
+
+%{
+Valores de hiperparametros recopilados a traves del codigo del paper:
+https://github. com/frederic-bousefsaf/ippg2bp
+
+VERBOSE = 2 (True)
+EPOCHS = 500
+BATCH_SIZE = 16
+Algoritmo de optimizacion = Adam
+LR (Learning Rate) = 1xe-3
+Funcion de perdida = MSE
+%}
+
+
 opciones_entrenamiento = trainingOptions('adam', ...
     'InitialLearnRate', 0.0001, ...
     'MaxEpochs', 50, ...
     'MiniBatchSize', 16, ...
     'Shuffle', 'every-epoch', ...
-    'Plots', 'training-progress');
-
+    'Plots', 'training-progress', ...
+    'Verbose', true, ... % Para imprimir el progreso del entrenamiento
+    'ValidationData', ds_combined, ... % Para calcular la perdida en el conjunto de validación
+    'ValidationFrequency', 10, ... % Cada cuantas iteraciones se calcula la perdida en el conjunto de validacion
+    'ValidationPatience', Inf, ... % Paciencia en caso de no mejora de la perdida en el conjunto de validacion
+    'ExecutionEnvironment', 'gpu', ... % Para ejecutar en CPU
+    'LearnRateSchedule', 'piecewise', ... % LR cambiara en momentos especificos del entrenamiento, segun se defina.
+    'LearnRateDropFactor', 0.1, ... % Se reducira en un 10% el LR cada vez que se active el esquema de reduccion de la tasa de aprendizaje.
+    'LearnRateDropPeriod', 10, ... %  El LR se reducira cada 10 epocas.
+    'LossFunction', 'nmse'); % Especificar la funcion de perdida NMSE
 
 
 
 % Crear tensores tridimensionales para los datos de entrada y salida
-datos_entrada_tensor = zeros(72, 1024, 2, num_csv);
-resultados_esperados_tensor = zeros(72, 1024, 2, num_csv);
+datos_entrada_tensor = zeros(num_rows, num_columns, 2, num_csv);
+resultados_esperados_tensor = zeros(num_rows, num_columns, 2, num_csv);
 
 % Procesar cada par de matrices individualmente
 for index = 1:num_csv

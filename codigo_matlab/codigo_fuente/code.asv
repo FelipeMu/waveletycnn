@@ -138,7 +138,7 @@ for i = 1:numel(signals)
     disp(s.name_file);
     signal_to_analyze = s.signal_vsc; % Senal para analizar
     % WAVELET MADRE CONTINUA A UTILIZAR: Analytic Morlet (Gabor) Wavelet
-    fb_amor = cwtfilterbank(SignalLength=length(signal_to_analyze),Boundary="periodic", Wavelet="amor",SamplingFrequency=5,VoicesPerOctave=4); % se obtiene una estructura (banco de filtros)
+    fb_amor = cwtfilterbank(SignalLength=length(signal_to_analyze),Boundary="periodic", Wavelet="amor",SamplingFrequency=5,VoicesPerOctave=5); % se obtiene una estructura (banco de filtros)
     psif_amor = freqz(fb_amor,FrequencyRange="twosided",IncludeLowpass=true); % psif_amor: Como cada filtro responde a diferentes frecuencias. ayuda a comprender como se distribuyen las frecuencias a lo largo de mi señal
     signals(i).struct_amor.psif_amor = psif_amor; % Se guarda las respuestas de las frecuencias en el atributo de la estructura
     [coefs_amor,freqs_amor,~,scalcfs_amor] = wt(fb_amor,signal_to_analyze); % se aplica la transformada continua a la senal
@@ -221,6 +221,11 @@ apply_noise_and_filter(signals, fs, 30);
 
 
 
+%###########################################################################################################
+%############################ Preparacion de inputs para la red ############################################
+%###########################################################################################################
+
+
 % Por cada senal pam & vsc se debe aplicar CWT, esto con el fin de
 % obtener los inputs para el entrenamiento de la red.
 
@@ -276,7 +281,10 @@ for j = 1:num_csv
     struct_noises(j) = struct('name_signal', '', 'pam_noise', [], 'matrix_complex_pam', [], 'scalscfs_pam_noise', [], 'psif_pam_noise', [],  'vsc_noise', [], 'matrix_complex_vsc', [], 'scalscfs_vsc_noise', [], 'psif_vsc_noise', []);
 end
 
+
+% *********************************************************************
 % Bucle para almacenar las senales con ruido en una estructura unica:
+% *********************************************************************
 for index = 1:num_csv
 
     file2_csv = pam_noises_csv(index).name; % Nombre del archivo  PAMnoises
@@ -306,12 +314,12 @@ for index = 1:num_csv
     % WAVELET MADRE CONTINUA A UTILIZAR: Analytic Morlet (Gabor) Wavelet
     
     % [PAM NOISE - CWT]
-    filters_bank_pam_noise = cwtfilterbank(SignalLength=length(struct_noises(index).pam_noise),Boundary="periodic", Wavelet="amor",SamplingFrequency=5,VoicesPerOctave=4); % se obtiene una estructura (banco de filtros)
+    filters_bank_pam_noise = cwtfilterbank(SignalLength=length(struct_noises(index).pam_noise),Boundary="periodic", Wavelet="amor",SamplingFrequency=5,VoicesPerOctave=5); % se obtiene una estructura (banco de filtros)
     psif_pam_noise = freqz(filters_bank_pam_noise,FrequencyRange="twosided",IncludeLowpass=true); % psif_amor: Como cada filtro responde a diferentes frecuencias. ayuda a comprender como se distribuyen las frecuencias a lo largo de mi señal
     [coefs_pam_noise,freqs_pam_noise,~,scalcfs_pam_noise] = wt(filters_bank_pam_noise,struct_noises(index).pam_noise); % se aplica la transformada continua a la senal
     
     % [VSC NOISE - CWT]
-    filters_bank_vsc_noise = cwtfilterbank(SignalLength=length(struct_noises(index).vsc_noise),Boundary="periodic", Wavelet="amor",SamplingFrequency=5,VoicesPerOctave=4); % se obtiene una estructura (banco de filtros)
+    filters_bank_vsc_noise = cwtfilterbank(SignalLength=length(struct_noises(index).vsc_noise),Boundary="periodic", Wavelet="amor",SamplingFrequency=5,VoicesPerOctave=5); % se obtiene una estructura (banco de filtros)
     psif_vsc_noise = freqz(filters_bank_vsc_noise,FrequencyRange="twosided",IncludeLowpass=true); % psif_amor: Como cada filtro responde a diferentes frecuencias. ayuda a comprender como se distribuyen las frecuencias a lo largo de mi señal
     [coefs_vsc_noise,freqs_vsc_noise,~,scalcfs_vsc_noise] = wt(filters_bank_vsc_noise,struct_noises(index).vsc_noise); % se aplica la transformada continua a la senal
     
@@ -334,5 +342,124 @@ for index = 1:num_csv
 end
 
 
+%###########################################################################################################
+%############################ Red profunda [U-Net] Trainning ###############################################
+%###########################################################################################################
+
+% Obtener dimensiones de la matriz compleja para luego crear la capa de
+% entrada:
+mc = struct_noises(1).matrix_complex_pam;
+[num_rows, num_columns] = size(mc); % Se obtiene la cantidad de filas y columnas de la matriz compleja
+
+% Definir la arquitectura de la red U-Net
+input_layer = imageInputLayer([num_rows num_columns 2]); % Capa de entrada para los datos (dos canales)
+num_filters = 64; % Numero de filtros para las capas convolucionales (comenzar con 64)
+
+%##########################################################################
+%##########################################################################
+
+%###########################
+% Codificador ##############
+%###########################
+conv1 = convolution2dLayer(3, num_filters, 'Padding', 'same');
+relu1 = reluLayer();
+conv2 = convolution2dLayer(3, num_filters, 'Padding', 'same');
+relu2 = reluLayer();
+pool1 = maxPooling2dLayer(2, 'Stride', 2);
+%###########################
+% Decodificador ############
+%###########################
+convT1 = transposedConv2dLayer(2, num_filters, 'Stride', 2);
+conv3 = convolution2dLayer(3, num_filters, 'Padding', 'same');
+relu3 = reluLayer();
+conv4 = convolution2dLayer(3, num_filters, 'Padding', 'same');
+relu4 = reluLayer();
+
+%##########################################################################
+%##########################################################################
 
 
+
+% Capa de salida
+conv5 = convolution2dLayer(1, 1, 'Padding', 'same'); % Un solo canal de salida para la parte real
+conv6 = convolution2dLayer(1, 1, 'Padding', 'same'); % Un solo canal de salida para la parte imaginaria
+
+% Combinar las salidas en una sola capa de salida
+concatenar = concatenationLayer(3, 2);
+
+% Combinar las capas en la red
+red_unet = [input_layer; conv1; relu1; conv2; relu2; pool1; 
+            convT1; conv3; relu3; conv4; relu4; concatenar];
+
+
+
+
+
+%###########################################################################################################
+%#################### Especificar la configuracion del entrenamiento #######################################
+%###########################################################################################################
+
+%{
+Valores de hiperparametros recopilados a traves del codigo del paper:
+https://github. com/frederic-bousefsaf/ippg2bp
+
+VERBOSE = 2 (True)
+EPOCHS = 500
+BATCH_SIZE = 16
+Algoritmo de optimizacion = Adam
+LR (Learning Rate) = 1xe-3
+Funcion de perdida = MSE
+%}
+
+
+opciones_entrenamiento = trainingOptions('adam', ...
+    'InitialLearnRate', 0.0001, ...
+    'MaxEpochs', 50, ...
+    'MiniBatchSize', 16, ...
+    'Shuffle', 'every-epoch', ...
+    'Plots', 'training-progress', ...
+    'Verbose', true, ... % Para imprimir el progreso del entrenamiento
+    'ValidationData', ds_combined, ... % Para calcular la perdida en el conjunto de validación
+    'ValidationFrequency', 10, ... % Cada cuantas iteraciones se calcula la perdida en el conjunto de validacion
+    'ValidationPatience', Inf, ... % Paciencia en caso de no mejora de la perdida en el conjunto de validacion
+    'ExecutionEnvironment', 'gpu', ... % Para ejecutar en CPU
+    'LearnRateSchedule', 'piecewise', ... % LR cambiara en momentos especificos del entrenamiento, segun se defina.
+    'LearnRateDropFactor', 0.1, ... % Se reducira en un 10% el LR cada vez que se active el esquema de reduccion de la tasa de aprendizaje.
+    'LearnRateDropPeriod', 10, ... %  El LR se reducira cada 10 epocas.
+    'LossFunction', 'nmse'); % Especificar la funcion de perdida NMSE
+
+
+
+% Crear tensores tridimensionales para los datos de entrada y salida
+datos_entrada_tensor = zeros(num_rows, num_columns, 2, num_csv);
+resultados_esperados_tensor = zeros(num_rows, num_columns, 2, num_csv);
+
+% Procesar cada par de matrices individualmente
+for index = 1:num_csv
+    % Obtener las matrices complejas del par actual
+    matriz_complex_pam = struct_noises(index).matrix_complex_pam;
+    matriz_complex_vsc = struct_noises(index).matrix_complex_vsc;
+    
+    % Dividir las matrices complejas en parte real e imaginaria y asignarlas al tensor
+    datos_entrada_tensor(:, :, 1, index) = real(matriz_complex_pam);
+    datos_entrada_tensor(:, :, 2, index) = imag(matriz_complex_pam);
+    resultados_esperados_tensor(:, :, 1, index) = real(matriz_complex_vsc);
+    resultados_esperados_tensor(:, :, 2, index) = imag(matriz_complex_vsc);
+end
+
+
+
+
+% Crear TensorDatastore para los datos de entrada y salida
+ds_inputs = tensorDatastore(datos_entrada_tensor);
+ds_outputs = tensorDatastore(resultados_esperados_tensor);
+
+% Combinar los TensorDatastores de entrada y salida
+ds_combined = combine(ds_inputs, ds_outputs);
+
+% Configurar el tamaño de mini-lote
+miniBatchSize = 1;
+ds_combined.MiniBatchSize = miniBatchSize;
+
+% Entrenar la red con el Datastore combinado
+[red_entrenada, info_entrenamiento] = trainNetwork(ds_combined, red_unet, opciones_entrenamiento);
