@@ -273,18 +273,20 @@ num_csv = numel(pam_noises_csv); % Se almacena la cantidad de archivos csv leido
 
 
 % Crear estructura que guardara cada par de PAM y VSC con ruido
-struct_pam_vsc_noises(num_csv) = struct('name_signal', '', 'pam_noise', [], 'vsc_noise', []);
+struct_noises(num_csv) = struct('name_signal', '', 'pam_noise', [], 'vsc_noise', []);
 
+% Se crean tantas instancias de la estructura como archivos csv encontrados
+% en la carpeta
 for j = 1:num_csv
-    struct_pam_vsc_noises(j) = struct('name_signal', '', 'pam_noise', [], 'vsc_noise', []);
+    struct_noises(j) = struct('name_signal', '', 'pam_noise', [], 'vsc_noise', []);
 end
 
 
 for index = 1:num_csv
-    file2_csv = pam_noises_csv(index).name; % Nombre del archivo carpeta PAMnoises
-    file2_csv_vsc = vsc_noises_csv(index).name; % Nombre del archivo carpeta VSCnoises
-    
 
+    file2_csv = pam_noises_csv(index).name; % Nombre del archivo  PAMnoises
+    file2_csv_vsc = vsc_noises_csv(index).name; % Nombre del archivo VSCnoises
+    
     path_pam_file2 = fullfile(path_pam_noises, file2_csv); % Ruta completa de la carpeta PAMnoises
     path_vsc_file2 = fullfile(path_vsc_noises, file2_csv_vsc); % Ruta completa de la carpeta VSCnoises
 
@@ -295,10 +297,10 @@ for index = 1:num_csv
     
     % Separa las señales PAM y VSC, eliminando la primera fila (suponiendo encabezados)
     pam_noise = data2_pam_noises(:, 1); % Presion Arterial Media con ruido
-    vsc_noise = data2_vsc_noises(:, 2); % Velocidad Sanguinea Cerebral con ruido
+    vsc_noise = data2_vsc_noises(:, 1); % Velocidad Sanguinea Cerebral con ruido
 
     % Asignar a la estructura
-    struct_pam_vsc_noises(index).name_signal = file2_csv; % Guardar el nombre del archivo
-    struct_pam_vsc_noises(index).pam_noise = pam_noise; % Guardar la senal PAM con ruido
-    struct_pam_vsc_noises(index).vsc_noise = vsc_noise; % Guardar la senal VSC con ruido
+    struct_noises(index).name_signal = ['Ruido', num2str(index)]; % Guardar el nombre del archivo
+    struct_noises(index).pam_noise = pam_noise; % Guardar la senal PAM con ruido
+    struct_noises(index).vsc_noise = vsc_noise; % Guardar la senal VSC con ruido
 end
