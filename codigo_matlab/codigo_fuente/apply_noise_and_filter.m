@@ -66,7 +66,7 @@ function apply_noise_and_filter(struct_signals, sampling_freq, len_signals_noise
             % Ahora se debe crear una carpeta para guardar las vsc_noises y
             % otra carpeta para guardar las pam_noises
             
-             % Carpeta para PAM noises
+            % Carpeta para PAM noises
             new_file_pam_noises = fullfile(new_file_output_path_i, 'PAMnoises'); % se crea carpeta del sujeto i
             % Crear carpeta si no existe
             if ~exist(new_file_pam_noises, 'dir')
