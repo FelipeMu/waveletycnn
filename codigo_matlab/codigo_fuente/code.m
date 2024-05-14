@@ -342,9 +342,13 @@ for index = 1:num_csv
 end
 
 
+
+
 %###########################################################################################################
 %############################ Red profunda [U-Net] Trainning ###############################################
 %###########################################################################################################
+
+
 
 % Obtener dimensiones de la matriz compleja para luego crear la capa de
 % entrada:
@@ -361,11 +365,13 @@ num_filters = 64; % Numero de filtros para las capas convolucionales (comenzar c
 %###########################
 % Codificador ##############
 %###########################
+
 conv1 = convolution2dLayer(3, num_filters, 'Padding', 'same');
 relu1 = reluLayer();
 conv2 = convolution2dLayer(3, num_filters, 'Padding', 'same');
 relu2 = reluLayer();
 pool1 = maxPooling2dLayer(2, 'Stride', 2);
+
 %###########################
 % Decodificador ############
 %###########################
@@ -374,11 +380,6 @@ conv3 = convolution2dLayer(3, num_filters, 'Padding', 'same');
 relu3 = reluLayer();
 conv4 = convolution2dLayer(3, num_filters, 'Padding', 'same');
 relu4 = reluLayer();
-
-%##########################################################################
-%##########################################################################
-
-
 
 % Capa de salida
 conv5 = convolution2dLayer(1, 1, 'Padding', 'same'); % Un solo canal de salida para la parte real
@@ -411,24 +412,17 @@ LR (Learning Rate) = 1xe-3
 Funcion de perdida = MSE
 %}
 
+%#########################################################################################################
+                                % DEFINICION DE HIPERPARAMETROS
 
-opciones_entrenamiento = trainingOptions('adam', ...
-    'InitialLearnRate', 0.0001, ...
-    'MaxEpochs', 50, ...
-    'MiniBatchSize', 16, ...
-    'Shuffle', 'every-epoch', ...
-    'Plots', 'training-progress', ...
-    'Verbose', true, ... % Para imprimir el progreso del entrenamiento
-    'ValidationData', ds_combined, ... % Para calcular la perdida en el conjunto de validación
-    'ValidationFrequency', 10, ... % Cada cuantas iteraciones se calcula la perdida en el conjunto de validacion
-    'ValidationPatience', Inf, ... % Paciencia en caso de no mejora de la perdida en el conjunto de validacion
-    'ExecutionEnvironment', 'gpu', ... % Para ejecutar en CPU
-    'LearnRateSchedule', 'piecewise', ... % LR cambiara en momentos especificos del entrenamiento, segun se defina.
-    'LearnRateDropFactor', 0.1, ... % Se reducira en un 10% el LR cada vez que se active el esquema de reduccion de la tasa de aprendizaje.
-    'LearnRateDropPeriod', 10, ... %  El LR se reducira cada 10 epocas.
-    'LossFunction', 'nmse'); % Especificar la funcion de perdida NMSE
+EPOCHS = 50; % Numero total de epocas
+LR = 0.0001; % Tasa de aprendizaje
+BATCH_SIZE = 16; % tamano de lote
+cosineDecayPeriod = 10; % Definir el número de épocas para el decaimiento coseno
 
 
+%#########################################################################################################
+                       % PREPARACION DE LA ENTRADA (MATRICES REAL E IMAGINARIA)
 
 % Crear tensores tridimensionales para los datos de entrada y salida
 datos_entrada_tensor = zeros(num_rows, num_columns, 2, num_csv);
@@ -447,19 +441,39 @@ for index = 1:num_csv
     resultados_esperados_tensor(:, :, 2, index) = imag(matriz_complex_vsc);
 end
 
+% Calcular el número total de muestras
+num_samples = size(datos_entrada_tensor, 4);
 
+% Calcular el número de muestras para el conjunto de entrenamiento y validación
+num_train_samples = ceil(0.7 * num_samples);
 
+% Generar un datastore para el conjunto de entrenamiento
+ds_train = subset(arrayDatastore(datos_entrada_tensor, 'IterationDimension', 4), 1:num_train_samples);
 
-% Crear TensorDatastore para los datos de entrada y salida
-ds_inputs = tensorDatastore(datos_entrada_tensor);
-ds_outputs = tensorDatastore(resultados_esperados_tensor);
+% Generar un datastore para el conjunto de validación
+ds_val = subset(arrayDatastore(datos_entrada_tensor, 'IterationDimension', 4), num_train_samples+1:num_samples);
 
-% Combinar los TensorDatastores de entrada y salida
-ds_combined = combine(ds_inputs, ds_outputs);
+% Calcular el número total de observaciones en el conjunto de entrenamiento
+total_observations_train = numel(ds_train.Files);
 
-% Configurar el tamaño de mini-lote
-miniBatchSize = 1;
-ds_combined.MiniBatchSize = miniBatchSize;
+% Configurar la frecuencia de validación para que coincida con la frecuencia de la validación en el entrenamiento
+validationFrequency = floor(ds_train.NumObservations / BATCH_SIZE);
 
-% Entrenar la red con el Datastore combinado
-[red_entrenada, info_entrenamiento] = trainNetwork(ds_combined, red_unet, opciones_entrenamiento);
+% Configurar la configuración de entrenamiento
+opciones_entrenamiento = trainingOptions('adam', ...
+    'InitialLearnRate', LR, ...
+    'MaxEpochs', EPOCHS, ...
+    'MiniBatchSize', BATCH_SIZE, ...
+    'Shuffle', 'every-epoch', ...
+    'Plots', 'training-progress', ...
+    'Verbose', true, ...
+    'ValidationData', ds_val, ... % Usar el conjunto de validación separado
+    'ValidationFrequency', validationFrequency, ... % Usar la frecuencia calculada
+    'ValidationPatience', Inf, ...
+    'ExecutionEnvironment', 'gpu', ...
+    'LearnRateSchedule', 'none', ...
+    'LearnRate', learnRateSchedule, ...
+    'LossFunction', 'nmse');
+
+% Entrenar la red con el conjunto de entrenamiento
+[red_entrenada, info_entrenamiento] = trainNetwork(ds_train, red_unet, opciones_entrenamiento);
