@@ -346,3 +346,76 @@ end
 %############################ Red profunda [U-Net] Trainning ################################################
 %###########################################################################################################
 
+% Definir la arquitectura de la red U-Net
+capas_entrada = imageInputLayer([72 1024 2]); % Capa de entrada para los datos (dos canales)
+num_filtros = 64; % Número de filtros para las capas convolucionales
+
+% Codificador
+conv1 = convolution2dLayer(3, num_filtros, 'Padding', 'same');
+relu1 = reluLayer();
+conv2 = convolution2dLayer(3, num_filtros, 'Padding', 'same');
+relu2 = reluLayer();
+pool1 = maxPooling2dLayer(2, 'Stride', 2);
+
+% Decodificador
+convT1 = transposedConv2dLayer(2, num_filtros, 'Stride', 2);
+conv3 = convolution2dLayer(3, num_filtros, 'Padding', 'same');
+relu3 = reluLayer();
+conv4 = convolution2dLayer(3, num_filtros, 'Padding', 'same');
+relu4 = reluLayer();
+
+% Capa de salida
+conv5 = convolution2dLayer(1, 1, 'Padding', 'same'); % Un solo canal de salida para la parte real
+conv6 = convolution2dLayer(1, 1, 'Padding', 'same'); % Un solo canal de salida para la parte imaginaria
+
+% Combinar las salidas en una sola capa de salida
+concatenar = concatenationLayer(3, 2);
+
+% Combinar las capas en la red
+red_unet = [capas_entrada; conv1; relu1; conv2; relu2; pool1; 
+            convT1; conv3; relu3; conv4; relu4; concatenar];
+
+% Especificar la configuración del entrenamiento
+opciones_entrenamiento = trainingOptions('adam', ...
+    'InitialLearnRate', 0.0001, ...
+    'MaxEpochs', 50, ...
+    'MiniBatchSize', 16, ...
+    'Shuffle', 'every-epoch', ...
+    'Plots', 'training-progress');
+
+
+
+
+% Crear tensores tridimensionales para los datos de entrada y salida
+datos_entrada_tensor = zeros(72, 1024, 2, num_csv);
+resultados_esperados_tensor = zeros(72, 1024, 2, num_csv);
+
+% Procesar cada par de matrices individualmente
+for index = 1:num_csv
+    % Obtener las matrices complejas del par actual
+    matriz_complex_pam = struct_noises(index).matrix_complex_pam;
+    matriz_complex_vsc = struct_noises(index).matrix_complex_vsc;
+    
+    % Dividir las matrices complejas en parte real e imaginaria y asignarlas al tensor
+    datos_entrada_tensor(:, :, 1, index) = real(matriz_complex_pam);
+    datos_entrada_tensor(:, :, 2, index) = imag(matriz_complex_pam);
+    resultados_esperados_tensor(:, :, 1, index) = real(matriz_complex_vsc);
+    resultados_esperados_tensor(:, :, 2, index) = imag(matriz_complex_vsc);
+end
+
+
+
+
+% Crear TensorDatastore para los datos de entrada y salida
+ds_inputs = tensorDatastore(datos_entrada_tensor);
+ds_outputs = tensorDatastore(resultados_esperados_tensor);
+
+% Combinar los TensorDatastores de entrada y salida
+ds_combined = combine(ds_inputs, ds_outputs);
+
+% Configurar el tamaño de mini-lote
+miniBatchSize = 1;
+ds_combined.MiniBatchSize = miniBatchSize;
+
+% Entrenar la red con el Datastore combinado
+[red_entrenada, info_entrenamiento] = trainNetwork(ds_combined, red_unet, opciones_entrenamiento);
