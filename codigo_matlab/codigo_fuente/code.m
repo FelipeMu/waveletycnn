@@ -138,7 +138,7 @@ for i = 1:numel(signals)
     disp(s.name_file);
     signal_to_analyze = s.signal_vsc; % Senal para analizar
     % WAVELET MADRE CONTINUA A UTILIZAR: Analytic Morlet (Gabor) Wavelet
-    fb_amor = cwtfilterbank(SignalLength=length(signal_to_analyze),Boundary="periodic", Wavelet="amor",SamplingFrequency=5,VoicesPerOctave=10); % se obtiene una estructura (banco de filtros)
+    fb_amor = cwtfilterbank(SignalLength=length(signal_to_analyze),Boundary="periodic", Wavelet="amor",SamplingFrequency=5,VoicesPerOctave=4); % se obtiene una estructura (banco de filtros)
     psif_amor = freqz(fb_amor,FrequencyRange="twosided",IncludeLowpass=true); % psif_amor: Como cada filtro responde a diferentes frecuencias. ayuda a comprender como se distribuyen las frecuencias a lo largo de mi señal
     signals(i).struct_amor.psif_amor = psif_amor; % Se guarda las respuestas de las frecuencias en el atributo de la estructura
     [coefs_amor,freqs_amor,~,scalcfs_amor] = wt(fb_amor,signal_to_analyze); % se aplica la transformada continua a la senal
@@ -165,23 +165,23 @@ for i = 1:numel(signals)
 %###########################################################################################################
 
 
-% Ejemplo de cómo crear una figura con múltiples secciones para comparar señales y mostrar errores
+% Ejemplo de como crear una figura con multiples secciones para comparar senales y mostrar errores
 
 % Crear una nueva figura
 figure;
 % Crear subplots para la señal original y las reconstrucciones con amor, morse, bump
 % y mostrar el error NMSE en el costado
 for i = 1:num_files
-    s = signals(i); % Obtenemos la estructura correspondiente a la señal actual
+    s = signals(i); % Obtenemos la estructura correspondiente a la senal actual
 
     % Definir el índice base para los subplots (para separar las señales)
     base_idx = (i - 1) * 2;
 
-    % Crear subplots para comparar las señales originales con las reconstruidas por amor
+    % Crear subplots para comparar las senales originales con las reconstruidas por amor
     subplot(num_files, 3, base_idx + 1);
     hold on;
-    plot(s.signal_vsc, 'b'); % Señal original
-    plot(s.struct_amor.signal_vsc_rec, 'r--'); % Señal reconstruida por amor
+    plot(s.signal_vsc, 'b'); % Senal original
+    plot(s.struct_amor.signal_vsc_rec, 'r--'); % Senal reconstruida por amor
     title(sprintf('Señal VSC vs Amor (NMSE: %.2e) [%s]', s.struct_amor.error, s.name_file));
     xlabel('Tiempo');
     ylabel('Amplitud');
@@ -222,7 +222,7 @@ apply_noise_and_filter(signals, fs, 30);
 
 
 %###########################################################################################################
-%############################ Red profunda [U-Net] Trainning ################################################
+%############################ Preparacion de inputs para la red ############################################
 %###########################################################################################################
 
 
@@ -273,15 +273,18 @@ num_csv = numel(pam_noises_csv); % Se almacena la cantidad de archivos csv leido
 
 
 % Crear estructura que guardara cada par de PAM y VSC con ruido
-struct_noises(num_csv) = struct('name_signal', '', 'pam_noise', [], 'vsc_noise', []);
+struct_noises(num_csv) = struct('name_signal', '', 'pam_noise', [], 'matrix_complex_pam', [], 'scalscfs_pam_noise', [], 'psif_pam_noise', [],  'vsc_noise', [], 'matrix_complex_vsc', [], 'scalscfs_vsc_noise', [], 'psif_vsc_noise', []);
 
 % Se crean tantas instancias de la estructura como archivos csv encontrados
 % en la carpeta
 for j = 1:num_csv
-    struct_noises(j) = struct('name_signal', '', 'pam_noise', [], 'vsc_noise', []);
+    struct_noises(j) = struct('name_signal', '', 'pam_noise', [], 'matrix_complex_pam', [], 'scalscfs_pam_noise', [], 'psif_pam_noise', [],  'vsc_noise', [], 'matrix_complex_vsc', [], 'scalscfs_vsc_noise', [], 'psif_vsc_noise', []);
 end
 
 
+% *********************************************************************
+% Bucle para almacenar las senales con ruido en una estructura unica:
+% *********************************************************************
 for index = 1:num_csv
 
     file2_csv = pam_noises_csv(index).name; % Nombre del archivo  PAMnoises
@@ -303,4 +306,43 @@ for index = 1:num_csv
     struct_noises(index).name_signal = ['Ruido', num2str(index)]; % Guardar el nombre del archivo
     struct_noises(index).pam_noise = pam_noise; % Guardar la senal PAM con ruido
     struct_noises(index).vsc_noise = vsc_noise; % Guardar la senal VSC con ruido
+
+    %########################################
+    %######## Aplicacion de CWT #############
+    %########################################
+
+    % WAVELET MADRE CONTINUA A UTILIZAR: Analytic Morlet (Gabor) Wavelet
+    
+    % [PAM NOISE - CWT]
+    filters_bank_pam_noise = cwtfilterbank(SignalLength=length(struct_noises(index).pam_noise),Boundary="periodic", Wavelet="amor",SamplingFrequency=5,VoicesPerOctave=5); % se obtiene una estructura (banco de filtros)
+    psif_pam_noise = freqz(filters_bank_pam_noise,FrequencyRange="twosided",IncludeLowpass=true); % psif_amor: Como cada filtro responde a diferentes frecuencias. ayuda a comprender como se distribuyen las frecuencias a lo largo de mi señal
+    [coefs_pam_noise,freqs_pam_noise,~,scalcfs_pam_noise] = wt(filters_bank_pam_noise,struct_noises(index).pam_noise); % se aplica la transformada continua a la senal
+    
+    % [VSC NOISE - CWT]
+    filters_bank_vsc_noise = cwtfilterbank(SignalLength=length(struct_noises(index).vsc_noise),Boundary="periodic", Wavelet="amor",SamplingFrequency=5,VoicesPerOctave=5); % se obtiene una estructura (banco de filtros)
+    psif_vsc_noise = freqz(filters_bank_vsc_noise,FrequencyRange="twosided",IncludeLowpass=true); % psif_amor: Como cada filtro responde a diferentes frecuencias. ayuda a comprender como se distribuyen las frecuencias a lo largo de mi señal
+    [coefs_vsc_noise,freqs_vsc_noise,~,scalcfs_vsc_noise] = wt(filters_bank_vsc_noise,struct_noises(index).vsc_noise); % se aplica la transformada continua a la senal
+    
+    
+    % Almacenando nueva informacion en la respectiva estructura de senales
+    % con ruido:
+    
+    % Almacenando coeficientes (matriz compleja)
+    struct_noises(index).matrix_complex_pam = coefs_pam_noise; % pam
+    struct_noises(index).matrix_complex_vsc = coefs_vsc_noise; % vsc
+
+    % Almacenando escalas de coeficientes (vector 1D real en fila, largo 1024)
+    struct_noises(index).scalscfs_pam_noise = scalcfs_pam_noise; % pam
+    struct_noises(index).scalscfs_vsc_noise = scalcfs_vsc_noise; % vsc
+
+    % Almacenando respuestas de filtros (matriz real 30x1024)
+    struct_noises(index).psif_pam_noise = psif_pam_noise; % pam
+    struct_noises(index).psif_vsc_noise = psif_vsc_noise; % vsc
+
 end
+
+
+%###########################################################################################################
+%############################ Red profunda [U-Net] Trainning ################################################
+%###########################################################################################################
+
