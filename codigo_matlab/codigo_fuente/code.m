@@ -357,6 +357,7 @@ mc = struct_noises(1).matrix_complex_pam;
 input_layer = imageInputLayer([num_rows num_columns 2]);  % Capa de entrada para los datos (dos canales)
 num_filters = 64; % Numero de filtros para las capas convolucionales (comenzar con 64)
 
+
 % Codificador
 encoder_layers = [
     convolution2dLayer(3, num_filters, 'Padding', 'same');
@@ -377,8 +378,8 @@ decoder_layers = [
 
 % Capas de salida
 output_layers = [
-    convolution2dLayer(1, 1, 'Padding', 'same');
-    convolution2dLayer(1, 1, 'Padding', 'same')
+    convolution2dLayer(1, 1, 'Padding', 'same', 'Name', 'conv5_output', 'NumChannels', 1);
+    convolution2dLayer(1, 1, 'Padding', 'same', 'Name', 'conv6_output', 'NumChannels', 1)
 ];
 
 % Combinar las capas en la red
@@ -386,9 +387,37 @@ unet_layers = [
     input_layer;
     encoder_layers;
     decoder_layers;
-    concatenationLayer(3, 2);
+    concatenationLayer(3, 2, 'Name', 'concat_output');
     output_layers
 ];
+
+% Combinar las capas en la red
+unet_layers = [
+    input_layer;
+    encoder_layers;
+    decoder_layers;
+    concatenationLayer(3, 2, 'Name', 'concat_output');
+    output_layers
+];
+
+% Obtener las capas de entrada del codificador y decodificador
+encoder_output = encoder_layers(end).Name;
+decoder_output = decoder_layers(end).Name;
+
+% Obtener las capas de salida
+conv5_output = output_layers(1).Name;
+conv6_output = output_layers(2).Name;
+
+% Establecer las conexiones entre las capas
+unet_layers(end - 3).Name = 'concat_output';
+unet_layers(end - 2).Name = conv5_output;
+unet_layers(end - 1).Name = conv6_output;
+
+% Mostrar la arquitectura de la red
+analyzeNetwork(unet_layers)
+
+
+
 
 
 %###########################################################################################################
@@ -451,8 +480,8 @@ opciones_entrenamiento = trainingOptions('adam', ...
     'ValidationPatience', Inf, ...
     'ExecutionEnvironment', 'gpu', ...
     'LearnRateSchedule', 'piecewise', ...
-    'LearnRateDropPeriod', cosineDecayPeriod, ...
+    'LearnRateDropPeriod', 5, ...
     'LearnRateDropFactor', 0.1); % No se especifica LossFunction
 
 % Entrenar la red con el conjunto de entrenamiento
-[red_entrenada, info_entrenamiento] = trainNetwork(datos_entrada_train, resultados_esperados_train, red_unet, opciones_entrenamiento);
+[red_entrenada, info_entrenamiento] = trainNetwork(datos_entrada_train, resultados_esperados_train, unet_layers, opciones_entrenamiento);
