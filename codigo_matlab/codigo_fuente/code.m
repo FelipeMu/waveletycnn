@@ -212,7 +212,7 @@ min_error_morse(signals(1).signal_vsc); % para wavelet MORSE
 
 % Se procede aplicar ruido gaussiano con un coeficiente de variacion entre
 % [5%, 10%], y posteriormente un filtro Butterworth de octavo orden, con
-% frecuencia de corte de 0.25 Hz. (estructura signals, frecuencia de muestreo, cantidad de senales con ruido)
+% frecuencia de corte de 0.25 Hz. (estructura signals, frecuencia de muestreo, [# cantidad] de senales con ruido)
 apply_noise_and_filter(signals, fs, 30);
 
 
@@ -345,10 +345,8 @@ end
 
 
 %###########################################################################################################
-%############################ Red profunda [U-Net] Trainning ###############################################
+%############################ Red neuronal profunda [U-Net]  ###############################################
 %###########################################################################################################
-
-
 
 % Obtener dimensiones de la matriz compleja para luego crear la capa de
 % entrada:
@@ -356,73 +354,53 @@ mc = struct_noises(1).matrix_complex_pam;
 [num_rows, num_columns] = size(mc); % Se obtiene la cantidad de filas y columnas de la matriz compleja
 
 % Definir la arquitectura de la red U-Net
-input_layer = imageInputLayer([num_rows num_columns 2]); % Capa de entrada para los datos (dos canales)
+input_layer = imageInputLayer([num_rows num_columns 2]);  % Capa de entrada para los datos (dos canales)
 num_filters = 64; % Numero de filtros para las capas convolucionales (comenzar con 64)
 
-%##########################################################################
-%##########################################################################
+% Codificador
+encoder_layers = [
+    convolution2dLayer(3, num_filters, 'Padding', 'same');
+    reluLayer();
+    convolution2dLayer(3, num_filters, 'Padding', 'same');
+    reluLayer();
+    maxPooling2dLayer(2, 'Stride', 2)
+];
 
-%###########################
-% Codificador ##############
-%###########################
+% Decodificador
+decoder_layers = [
+    transposedConv2dLayer(2, num_filters, 'Stride', 2);
+    convolution2dLayer(3, num_filters, 'Padding', 'same');
+    reluLayer();
+    convolution2dLayer(3, num_filters, 'Padding', 'same');
+    reluLayer()
+];
 
-conv1 = convolution2dLayer(3, num_filters, 'Padding', 'same');
-relu1 = reluLayer();
-conv2 = convolution2dLayer(3, num_filters, 'Padding', 'same');
-relu2 = reluLayer();
-pool1 = maxPooling2dLayer(2, 'Stride', 2);
-
-%###########################
-% Decodificador ############
-%###########################
-convT1 = transposedConv2dLayer(2, num_filters, 'Stride', 2);
-conv3 = convolution2dLayer(3, num_filters, 'Padding', 'same');
-relu3 = reluLayer();
-conv4 = convolution2dLayer(3, num_filters, 'Padding', 'same');
-relu4 = reluLayer();
-
-% Capa de salida
-conv5 = convolution2dLayer(1, 1, 'Padding', 'same'); % Un solo canal de salida para la parte real
-conv6 = convolution2dLayer(1, 1, 'Padding', 'same'); % Un solo canal de salida para la parte imaginaria
-
-% Combinar las salidas en una sola capa de salida
-concatenar = concatenationLayer(3, 2);
+% Capas de salida
+output_layers = [
+    convolution2dLayer(1, 1, 'Padding', 'same');
+    convolution2dLayer(1, 1, 'Padding', 'same')
+];
 
 % Combinar las capas en la red
-red_unet = [input_layer; conv1; relu1; conv2; relu2; pool1; 
-            convT1; conv3; relu3; conv4; relu4; concatenar];
-
-
-
+unet_layers = [
+    input_layer;
+    encoder_layers;
+    decoder_layers;
+    concatenationLayer(3, 2);
+    output_layers
+];
 
 
 %###########################################################################################################
 %#################### Especificar la configuracion del entrenamiento #######################################
 %###########################################################################################################
 
-%{
-Valores de hiperparametros recopilados a traves del codigo del paper:
-https://github. com/frederic-bousefsaf/ippg2bp
-
-VERBOSE = 2 (True)
-EPOCHS = 500
-BATCH_SIZE = 16
-Algoritmo de optimizacion = Adam
-LR (Learning Rate) = 1xe-3
-Funcion de perdida = MSE
-%}
-
-%#########################################################################################################
-                                % DEFINICION DE HIPERPARAMETROS
-
 EPOCHS = 50; % Numero total de epocas
 LR = 0.0001; % Tasa de aprendizaje
 BATCH_SIZE = 16; % tamano de lote
 cosineDecayPeriod = 10; % Definir el número de épocas para el decaimiento coseno
 
-
-%#########################################################################################################
-                       % PREPARACION DE LA ENTRADA (MATRICES REAL E IMAGINARIA)
+% Preparación de los datos de entrada y salida
 
 % Crear tensores tridimensionales para los datos de entrada y salida
 datos_entrada_tensor = zeros(num_rows, num_columns, 2, num_csv);
@@ -447,17 +425,18 @@ num_samples = size(datos_entrada_tensor, 4);
 % Calcular el número de muestras para el conjunto de entrenamiento y validación
 num_train_samples = ceil(0.7 * num_samples);
 
-% Generar un datastore para el conjunto de entrenamiento
-ds_train = subset(arrayDatastore(datos_entrada_tensor, 'IterationDimension', 4), 1:num_train_samples);
+% Obtener los índices para los conjuntos de entrenamiento y validación
+indices = randperm(num_samples);
+train_indices = indices(1:num_train_samples);
+val_indices = indices(num_train_samples+1:end);
 
-% Generar un datastore para el conjunto de validación
-ds_val = subset(arrayDatastore(datos_entrada_tensor, 'IterationDimension', 4), num_train_samples+1:num_samples);
+% Obtener los datos de entrenamiento y validación
+datos_entrada_train = datos_entrada_tensor(:, :, :, train_indices);
+resultados_esperados_train = resultados_esperados_tensor(:, :, :, train_indices);
+datos_entrada_val = datos_entrada_tensor(:, :, :, val_indices);
+resultados_esperados_val = resultados_esperados_tensor(:, :, :, val_indices);
 
-% Calcular el número total de observaciones en el conjunto de entrenamiento
-total_observations_train = numel(ds_train.Files);
-
-% Configurar la frecuencia de validación para que coincida con la frecuencia de la validación en el entrenamiento
-validationFrequency = floor(ds_train.NumObservations / BATCH_SIZE);
+% Entrenar la red neuronal
 
 % Configurar la configuración de entrenamiento
 opciones_entrenamiento = trainingOptions('adam', ...
@@ -467,13 +446,13 @@ opciones_entrenamiento = trainingOptions('adam', ...
     'Shuffle', 'every-epoch', ...
     'Plots', 'training-progress', ...
     'Verbose', true, ...
-    'ValidationData', ds_val, ... % Usar el conjunto de validación separado
-    'ValidationFrequency', validationFrequency, ... % Usar la frecuencia calculada
+    'ValidationData', {datos_entrada_val, resultados_esperados_val}, ...
+    'ValidationFrequency', floor(num_train_samples / BATCH_SIZE), ...
     'ValidationPatience', Inf, ...
     'ExecutionEnvironment', 'gpu', ...
-    'LearnRateSchedule', 'none', ...
-    'LearnRate', learnRateSchedule, ...
-    'LossFunction', 'nmse');
+    'LearnRateSchedule', 'piecewise', ...
+    'LearnRateDropPeriod', cosineDecayPeriod, ...
+    'LearnRateDropFactor', 0.1); % No se especifica LossFunction
 
 % Entrenar la red con el conjunto de entrenamiento
-[red_entrenada, info_entrenamiento] = trainNetwork(ds_train, red_unet, opciones_entrenamiento);
+[red_entrenada, info_entrenamiento] = trainNetwork(datos_entrada_train, resultados_esperados_train, red_unet, opciones_entrenamiento);
