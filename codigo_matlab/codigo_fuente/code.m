@@ -343,6 +343,71 @@ end
 
 
 
+restoredefaultpath;
+rehash toolboxcache;
+
+
+
+imageSize = [480 640 3];
+numClasses = 5;
+encoderDepth = 3;
+unetNetwork = unet(imageSize,numClasses,EncoderDepth=encoderDepth);
+
+% Datos de entrenamiento y validación (ejemplo)
+% XTrain: imágenes de entrenamiento (dos canales)
+% YTrain: etiquetas de regresión correspondientes
+% XValidation: imágenes de validación (dos canales)
+% YValidation: etiquetas de regresión de validación
+% Reemplaza esto con tus propios datos
+
+% Definir la arquitectura de la red U-Net
+inputSize = [36 1024 2]; % Tamaño de entrada de la imagen (dos canales)
+numClasses = 1; % Número de clases de salida (1 para regresión)
+layers = unet(inputSize, numClasses);
+
+% Definir opciones de entrenamiento
+options = trainingOptions('adam', ...
+    'MaxEpochs', 20, ...
+    'MiniBatchSize', 16, ...
+    'InitialLearnRate', 1e-3, ...
+    'Shuffle', 'every-epoch', ...
+    'Verbose', true, ...
+    'Plots', 'training-progress');
+
+% Entrenar la red U-Net
+net = trainNetwork(XTrain, YTrain, layers, options);
+
+% Evaluar el modelo
+YPred = predict(net, XValidation);
+mse = immse(YPred, YValidation); % Calcular el error cuadrático medio
+fprintf('Mean Squared Error: %f\n', mse);
+
+% Realizar predicciones en nuevas imágenes
+% XTest: nuevas imágenes de entrada (dos canales)
+YPredNew = predict(net, XTest);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+%{
 
 %###########################################################################################################
 %############################ Red neuronal profunda [U-Net]  ###############################################
@@ -485,3 +550,4 @@ opciones_entrenamiento = trainingOptions('adam', ...
 
 % Entrenar la red con el conjunto de entrenamiento
 [red_entrenada, info_entrenamiento] = trainNetwork(datos_entrada_train, resultados_esperados_train, unet_layers, opciones_entrenamiento);
+%}
