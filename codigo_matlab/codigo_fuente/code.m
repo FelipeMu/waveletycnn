@@ -18,7 +18,7 @@ pam = []; % PAM: Presión Arterial Media
 vsc = []; % VSC: Velocidad Sanguínea Cerebral
 
 % Directorio que contiene archivos CSV
-folder_csv = 'D:/TT/Memoria/waveletycnn/signals';
+folder_csv = 'D:/TT/Memoria/waveletycnn/codigo_matlab_codigo_fuente/signals';
 
 % Listar archivos en el directorio
 files_csv = dir(fullfile(folder_csv, '*.csv'));
@@ -343,49 +343,33 @@ end
 
 
 
-restoredefaultpath;
-rehash toolboxcache;
+% Almacenar matrices complejas pam y vsc en carpetas especificas para 
+% luego trabajar con la red profunda en python. Para ello se importan 
+% las matrices en formato.mat y luego en python se utiliza un script
+% para transformar dicho formato a npy.
 
+% Directorios para guardar los archivos .mat
+pam_dir = 'D:/TT/Memoria/waveletycnn/codigo_matlab/codigo_fuente/matrices_complejas_pam_mat';
+vsc_dir = 'D:/TT/Memoria/waveletycnn/codigo_matlab/codigo_fuente/matrices_complejas_vsc_mat';
 
+% Crear los directorios si no existen
+if ~exist(pam_dir, 'dir')
+    mkdir(pam_dir);
+end
+if ~exist(vsc_dir, 'dir')
+    mkdir(vsc_dir);
+end
 
-imageSize = [480 640 3];
-numClasses = 5;
-encoderDepth = 3;
-unetNetwork = unet(imageSize,numClasses,EncoderDepth=encoderDepth);
-
-% Datos de entrenamiento y validación (ejemplo)
-% XTrain: imágenes de entrenamiento (dos canales)
-% YTrain: etiquetas de regresión correspondientes
-% XValidation: imágenes de validación (dos canales)
-% YValidation: etiquetas de regresión de validación
-% Reemplaza esto con tus propios datos
-
-% Definir la arquitectura de la red U-Net
-inputSize = [36 1024 2]; % Tamaño de entrada de la imagen (dos canales)
-numClasses = 1; % Número de clases de salida (1 para regresión)
-layers = unet(inputSize, numClasses);
-
-% Definir opciones de entrenamiento
-options = trainingOptions('adam', ...
-    'MaxEpochs', 20, ...
-    'MiniBatchSize', 16, ...
-    'InitialLearnRate', 1e-3, ...
-    'Shuffle', 'every-epoch', ...
-    'Verbose', true, ...
-    'Plots', 'training-progress');
-
-% Entrenar la red U-Net
-net = trainNetwork(XTrain, YTrain, layers, options);
-
-% Evaluar el modelo
-YPred = predict(net, XValidation);
-mse = immse(YPred, YValidation); % Calcular el error cuadrático medio
-fprintf('Mean Squared Error: %f\n', mse);
-
-% Realizar predicciones en nuevas imágenes
-% XTest: nuevas imágenes de entrada (dos canales)
-YPredNew = predict(net, XTest);
-
+% Guardar las matrices complejas en archivos .mat
+for i = 1:num_csv
+    % Guardar matriz_complex_pam
+    matrix_complex_pam = struct_noises(i).matrix_complex_pam;
+    save(fullfile(pam_dir, sprintf('matrix_complex_pam_noise_%d.mat', i)), 'matrix_complex_pam');
+    
+    % Guardar matriz_complex_vsc
+    matrix_complex_vsc = struct_noises(i).matrix_complex_vsc;
+    save(fullfile(vsc_dir, sprintf('matrix_complex_vsc_noise_%d.mat', i)), 'matrix_complex_vsc');
+end
 
 
 
