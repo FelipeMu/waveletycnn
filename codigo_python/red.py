@@ -8,7 +8,9 @@ import tensorflow as tf # Para red neuronal profunda
 import numpy as np
 import matplotlib.pyplot as plt
 
-
+####################################################################################
+####################### Convertir matrices de .mat a .npy ##########################
+####################################################################################
 
 # Directorios de entrada y salida
 input_pam_dir = 'D:/TT/Memoria/waveletycnn/codigo_matlab/codigo_fuente/matrices_complejas_pam_mat' # matrices en formato .mat
@@ -40,8 +42,11 @@ def convert_mat_to_npy(input_dir, output_dir, prefix):
 convert_mat_to_npy(input_pam_dir, output_pam_dir, 'matrix_complex_pam')
 convert_mat_to_npy(input_vsc_dir, output_vsc_dir, 'matrix_complex_vsc')
 
+
+
+
 ####################################################################################
-####################################################################################
+####################### Conversion a tensor tridimensional##########################
 ####################################################################################
 
 # Directorios de entrada y salida
@@ -95,13 +100,8 @@ print("Procesamiento completado.")
 
 
 
-
-
-
-
-
 ####################################################################################
-####################################################################################
+######################### Red Neuronal Profunda: U-net #############################
 ####################################################################################
 
 # Directorios de entrada
