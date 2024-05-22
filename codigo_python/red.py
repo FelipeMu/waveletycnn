@@ -8,6 +8,8 @@ import tensorflow as tf # Para red neuronal profunda
 import numpy as np
 import matplotlib.pyplot as plt
 
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+
 ####################################################################################
 ####################### Convertir matrices de .mat a .npy ##########################
 ####################################################################################
@@ -45,9 +47,9 @@ convert_mat_to_npy(input_vsc_dir, output_vsc_dir, 'matrix_complex_vsc')
 
 
 
-####################################################################################
-####################### Conversion a tensor tridimensional##########################
-####################################################################################
+#####################################################################################
+####################### Conversion a tensor tridimensional ##########################
+#####################################################################################
 
 # Directorios de entrada y salida
 input_pam_dir = 'D:/TT/Memoria/waveletycnn/codigo_python/matrices_complejas_pam_python'
@@ -98,6 +100,39 @@ print("Procesamiento completado.")
 
 
 
+#####################################################################################
+#################### Verificacicon de "shape" - matrices pam y vsc ##################
+#####################################################################################
+
+# Directorios de salida
+output_pam_dir_check = 'D:/TT/Memoria/waveletycnn/codigo_python/matrices_complejas_pam_procesadas'
+output_vsc_dir_check = 'D:/TT/Memoria/waveletycnn/codigo_python/matrices_complejas_vsc_procesadas'
+
+# Funcion para verificar la forma de una matriz
+def verificar_shape(directorio, nombre_archivo):
+    path = os.path.join(directorio, nombre_archivo)
+    matriz = np.load(path)
+    return matriz.shape
+
+# Verificar la forma de un archivo de ejemplo en output_pam_dir_check
+ejemplo_pam = os.listdir(output_pam_dir_check)[0]  # Obtener el primer archivo de la carpeta
+shape_pam = verificar_shape(output_pam_dir_check, ejemplo_pam)
+print(f"Shape de {ejemplo_pam} en {output_pam_dir_check}: {shape_pam}")
+
+# Verificar la forma de un archivo de ejemplo en output_vsc_dir_check
+ejemplo_vsc = os.listdir(output_vsc_dir_check)[0]  # Obtener el primer archivo de la carpeta
+shape_vsc = verificar_shape(output_vsc_dir_check, ejemplo_vsc)
+print(f"Shape de {ejemplo_vsc} en {output_vsc_dir_check}: {shape_vsc}")
+
+
+
+
+
+
+
+
+
+
 
 
 ####################################################################################
@@ -105,10 +140,10 @@ print("Procesamiento completado.")
 ####################################################################################
 
 # Directorios de entrada
-input_pam_dir = 'D:/TT/Memoria/waveletycnn/codigo_python/matrices_complejas_pam_python'
-output_vsc_dir = 'D:/TT/Memoria/waveletycnn/codigo_python/matrices_complejas_vsc_python'
+input_pam_dir = 'D:/TT/Memoria/waveletycnn/codigo_python/matrices_complejas_pam_procesadas'
+output_vsc_dir = 'D:/TT/Memoria/waveletycnn/codigo_python/matrices_complejas_vsc_procesadas'
 
-# Cargar matrices .npy
+# Función para cargar los archivos .npy
 def load_npy_files(input_dir):
     files = sorted([os.path.join(input_dir, f) for f in os.listdir(input_dir) if f.endswith('.npy')])
     data = [np.load(f) for f in files]
@@ -118,10 +153,11 @@ def load_npy_files(input_dir):
 X = load_npy_files(input_pam_dir)
 Y = load_npy_files(output_vsc_dir)
 
-# Dividir las matrices en partes reales e imaginarias
-X_real_imag = np.stack((X.real, X.imag), axis=-1)
-Y_real_imag = np.stack((Y.real, Y.imag), axis=-1)
+# Verificar las formas de los datos cargados
+print(f"Shape de los inputs (X): {X.shape}")
+print(f"Shape de los outputs (Y): {Y.shape}")
 
+# Definir la U-Net con regularización L2
 def unet_model_with_l2(input_shape, l2_lambda):
     inputs = tf.keras.Input(shape=input_shape)
     
@@ -158,18 +194,21 @@ def unet_model_with_l2(input_shape, l2_lambda):
     
     return model
 
+# Definir la métrica NMSE ajustada para utilizar la varianza de los valores verdaderos
 def nmse(y_true, y_pred):
-    return tf.keras.backend.mean(tf.keras.backend.square(y_true - y_pred)) / tf.keras.backend.mean(tf.keras.backend.square(y_true))
+    mse = tf.keras.backend.mean(tf.keras.backend.square(y_true - y_pred))
+    var_true = tf.keras.backend.var(y_true)
+    return mse / var_true
 
-# Hiperparámetros
-max_epoch = 100
+# Hiperparametros
+max_epoch = 50
 size_batch = 8
 learning_rate = 0.001
 l2_lambda = 0.01
-validation_split = 0.1
+validation_split = 0.3 # 70% entrenamiento & 30% validacion
 
 # Definir el modelo
-input_shape = X_real_imag.shape[1:]  # Asegúrate de que esto coincide con la forma de tus datos
+input_shape = X.shape[1:]  # forma del input a entrar. en este caso esta forma debe coincidir con las matrices que entrar a la red
 model = unet_model_with_l2(input_shape, l2_lambda)
 
 # Configurar el optimizador con la tasa de aprendizaje especificada
@@ -179,7 +218,7 @@ optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 model.compile(optimizer=optimizer, loss='mean_squared_error', metrics=[nmse])
 
 # Entrenar el modelo
-history = model.fit(X_real_imag, Y_real_imag, epochs=max_epoch, batch_size=size_batch, validation_split=validation_split)
+history = model.fit(X, Y, epochs=max_epoch, batch_size=size_batch, validation_split=validation_split)
 
 # Visualizar el NMSE
 plt.plot(history.history['nmse'], label='NMSE (entrenamiento)')
