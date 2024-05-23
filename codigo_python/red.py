@@ -7,6 +7,7 @@ from scipy.io import loadmat # type: ignore
 import tensorflow as tf # Para red neuronal profunda
 import numpy as np
 import matplotlib.pyplot as plt
+import time # Para tomar el tiempo de entrenamiento de la red
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
@@ -201,8 +202,8 @@ def nmse(y_true, y_pred):
     return mse / var_true
 
 # Hiperparametros
-max_epoch = 50
-size_batch = 8
+max_epoch = 200
+batchsize = 16
 learning_rate = 0.001
 l2_lambda = 0.01
 validation_split = 0.3 # 70% entrenamiento & 30% validacion
@@ -211,14 +212,31 @@ validation_split = 0.3 # 70% entrenamiento & 30% validacion
 input_shape = X.shape[1:]  # forma del input a entrar. en este caso esta forma debe coincidir con las matrices que entran a la red
 model = unet_model_with_l2(input_shape, l2_lambda)
 
-
-lr_schedule = tf.keras.optimizers.schedules.CosineDecay(learning_rate, decay_steps=max_epoch)
-
+# DEFINICION DE LA FUNCION DE DECAIMIENTO, ALGORITMO OPTIMIZADOR, FUNCION DE PERDIDA Y METRICA
+lr_schedule = tf.keras.optimizers.schedules.CosineDecay(learning_rate, decay_steps=100)
 optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
-
 model.compile(optimizer=optimizer, loss='mean_squared_error', metrics=[nmse])
 
-history = model.fit(X, Y, epochs=max_epoch, batch_size=size_batch, validation_split=validation_split)
+###########################################################################################################
+###########################################################################################################
+###########################################################################################################
+
+# ENTRENAMIENTO DE LA RED
+# Medir el tiempo de inicio del entrenamiento
+start_time = time.time()
+
+history = model.fit(X, Y, epochs=max_epoch, batch_size=batchsize, validation_split=validation_split)
+
+# Medir el tiempo de finalizaciOn del entrenamiento
+end_time = time.time()
+
+# Calcular el tiempo total de entrenamiento
+total_time = end_time - start_time
+print(f'Tiempo total de entrenamiento: {total_time:.2f} segundos')
+
+###########################################################################################################
+###########################################################################################################
+###########################################################################################################
 
 # Visualizar el NMSE
 plt.plot(history.history['nmse'], label='NMSE (entrenamiento)')
