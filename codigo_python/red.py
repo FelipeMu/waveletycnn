@@ -150,8 +150,8 @@ def load_npy_files(input_dir):
     return np.array(data)
 
 # Cargar los datos de entrada y salida
-X = load_npy_files(input_pam_dir)
-Y = load_npy_files(output_vsc_dir)
+X = load_npy_files(input_pam_dir) # inputs
+Y = load_npy_files(output_vsc_dir) # outputs
 
 # Verificar las formas de los datos cargados
 print(f"Shape de los inputs (X): {X.shape}")
@@ -208,16 +208,16 @@ l2_lambda = 0.01
 validation_split = 0.3 # 70% entrenamiento & 30% validacion
 
 # Definir el modelo
-input_shape = X.shape[1:]  # forma del input a entrar. en este caso esta forma debe coincidir con las matrices que entrar a la red
+input_shape = X.shape[1:]  # forma del input a entrar. en este caso esta forma debe coincidir con las matrices que entran a la red
 model = unet_model_with_l2(input_shape, l2_lambda)
 
-# Configurar el optimizador con la tasa de aprendizaje especificada
-optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
-# Compilar el modelo con la métrica NMSE
+lr_schedule = tf.keras.optimizers.schedules.CosineDecay(learning_rate, decay_steps=max_epoch)
+
+optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
+
 model.compile(optimizer=optimizer, loss='mean_squared_error', metrics=[nmse])
 
-# Entrenar el modelo
 history = model.fit(X, Y, epochs=max_epoch, batch_size=size_batch, validation_split=validation_split)
 
 # Visualizar el NMSE
