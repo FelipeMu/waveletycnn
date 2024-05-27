@@ -224,7 +224,6 @@ model.compile(optimizer=optimizer, loss='mean_squared_error', metrics=[nmse])
 # ENTRENAMIENTO DE LA RED
 # Medir el tiempo de inicio del entrenamiento
 start_time = time.time()
-
 history = model.fit(X, Y, epochs=max_epoch, batch_size=batchsize, validation_split=validation_split)
 
 # Medir el tiempo de finalizaciOn del entrenamiento
@@ -240,8 +239,8 @@ print(f'Tiempo total de entrenamiento: {total_time:.2f} segundos')
 
 # Visualizar el NMSE
 plt.plot(history.history['nmse'], label='NMSE (entrenamiento)')
-plt.plot(history.history['val_nmse'], label='NMSE (validación)')
-plt.xlabel('Época')
+plt.plot(history.history['val_nmse'], label='NMSE (validacion)')
+plt.xlabel('Epoca')
 plt.ylabel('NMSE')
 plt.legend()
 plt.show()
