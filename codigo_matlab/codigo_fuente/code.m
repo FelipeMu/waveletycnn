@@ -1,7 +1,7 @@
 %######################################################
 %############## PRE-PROCESAMIENTO #####################
 %######################################################
-
+% **** linea 243 aprox, se selecciona al individuo a estudiar ****
 
 % Periodo de muestreo
 ts = 0.2; % segundos
@@ -241,7 +241,8 @@ folder_names = setdiff(folder_names, {'.', '..'});
 
 % Elegir al sujeto de prueba
 file_person = folder_names(1); % se tiene el nombre de la carpeta: ejemplo G2x001
-
+fprintf("Individuo a analizar")
+disp(file_person)
 file_pam = fullfile(path_1, file_person); % Se concatena al path_1 (path general), el nombre de la carpeta del sujeto
 
 
@@ -362,8 +363,9 @@ end
 if ~exist(vsc_dir, 'dir')
     mkdir(vsc_dir);
 end
-
+%################################################
 % Guardar las matrices complejas en archivos .mat
+%################################################
 for i = 1:num_csv
     % Guardar matriz_complex_pam
     matrix_complex_pam = struct_noises(i).matrix_complex_pam;
@@ -372,4 +374,38 @@ for i = 1:num_csv
     % Guardar matriz_complex_vsc
     matrix_complex_vsc = struct_noises(i).matrix_complex_vsc;
     save(fullfile(vsc_dir, sprintf('matrix_complex_vsc_noise_%d.mat', i)), 'matrix_complex_vsc');
+end
+
+
+
+
+
+%##################################################################
+%##################################################################
+% Bucle para obtener la matriz de coeficientes de cada senal
+% original PAM (de cada individuo). Porteriormente se hara una 
+% prediccion de la senal VSC por medio de la red ya entrenada
+% (U-net)
+%##################################################################
+%##################################################################
+
+
+% Directorios para guardar los archivos.mat asociados a los inputs de coeficientes 
+inputs_coefs_dir = 'D:/TT/Memoria/waveletycnn/codigo_python/inputs_coeficientes';
+
+% Crear los directorios si no existen
+if ~exist(inputs_coefs_dir, 'dir')
+    mkdir(inputs_coefs_dir);
+end
+
+% Aplicar CWT y obtener coeficientes (matriz compleja) para predecir los
+% coeficientes de la senal VSC por medio de la red neuronal U-net
+for index = 1:numel(signals)
+    signal_to_predict = signals(index).signal_pam;
+    filters_bank_pam_predict = cwtfilterbank(SignalLength=length(signal_to_predict),Boundary="periodic", Wavelet="amor",SamplingFrequency=5,VoicesPerOctave=5); % se obtiene una estructura (banco de filtros)
+    psif_pam_noise = freqz(filters_bank_pam_predict,FrequencyRange="twosided",IncludeLowpass=true); % psif_amor: Como cada filtro responde a diferentes frecuencias. ayuda a comprender como se distribuyen las frecuencias a lo largo de mi señal
+    [coefs_pam_to_predict,freqs_pam_to_predict,~,scalcfs_pam_to_predict] = wt(filters_bank_pam_predict,signal_to_predict); % se aplica la transformada continua a la senal
+    
+    % Guardar coeficientes (matriz compleja de senal PAM)
+    save(fullfile(inputs_coefs_dir, sprintf('matrix_complex_pam_to_predict_%d.mat', index)), 'coefs_pam_to_predict');
 end
