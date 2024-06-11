@@ -458,12 +458,9 @@ coefs_vsc_predicted_by_unet = cast(coefs_vsc_predicted_by_unet_struct(1).complex
 
 
  % comparar senales
-figure;
-hold on;
-plot(signal_vsc_to_predict, 'b'); % Senal original
-plot( get_signal_vsc_estimated_with_coefs_unet, 'r--'); % Senal reconstruida por amor
-title(sprintf('Señal VSC: Original vs Predicha (NMSE: %.2e)', error_signal_original_and_predicted));
+ plot(s.signal_vsc, 'b'); % Senal original
+plot(s.struct_amor.signal_vsc_rec, 'r--'); % Senal reconstruida por amor
+title(sprintf('Señal VSC vs Amor (NMSE: %.2e) [%s]', s.struct_amor.error, s.name_file));
 xlabel('Tiempo');
 ylabel('Amplitud');
-legend('Original', 'Reconstruida');
-hold off;
+legend('Original', 'Reconstruida (amor)');
